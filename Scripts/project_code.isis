@@ -1,0 +1,2987 @@
+% Isaac Gutierrez, '28
+
+% Init. commands
+add_to_isis_load_path("/man1/PACKAGES/isisscripts/share");
+require("isisscripts");
+require("vwhere");
+
+% Variables
+variable A1,B1,A2,B2,dA1,dB1,dA2,dB2,dA1_kev_lo,dA1_kev_hi,dB1_kev_lo,dB1_kev_hi,dA2_kev_lo,dA2_kev_hi;
+variable dB2_kev_lo,dB2_kev_hi,dA1_counts_kev,dB1_counts_kev,dA2_counts_kev,dB2_counts_kev;
+variable dA1_cs,dB1_cs,dA2_cs,dB2_cs,dA1_idx1,dA1_idx2,dB1_idx1,dB1_idx2,dA2_idx1,dA2_idx2;
+variable dB2_idx1,dB2_idx2;
+variable xta,xra,xra_e,xtb,xrb,xrb_e,xa,xb,xcon,yta,yra,yra_e,ytb,yrb,yrb_e,ya,yb,ycon,zta,zra,zra_e,ztb,zrb,zrb_e,zcon;
+variable za,zb,con,cxy,cyx,cyz,czy,cxz,czx,b_xta,b_xra,b_xra_e,b_xtb,b_xrb,b_xrb_e,b_xa,b_xb,b_xcon,b_yta,b_yra;
+variable b_yra_e,b_ytb,b_yrb,b_yrb_e,b_ya,b_yb,b_ycon,b_zta,b_zra,b_zra_e,b_ztb,b_zrb,b_zrb_e,b_za,b_zb,b_zcon;
+variable b_cxy,b_cyx,b_cyz,b_czy,b_cxz,b_czx,gb_cxy_temp,gb_cxy,gb_cyz_temp,gb_cyz,gb_cxz_temp,gb_cxz;
+variable gcolor_indices,g_xcon,g_ycon,g_zcon,gb_xcon,gb_ycon,gb_zcon,sum_rates,gb_sum_rates;
+
+variable bin_width_a,bin_width_b,temp_lowedge,temp_highedge,temp_indices_in_bin,i,k,lc;
+
+variable src_t_a,src_x_a,src_y_a,src_gti_start_a,src_gti_stop_a;
+variable src_x0_a,src_y0_a,src_r_a,src_region_a,src_tregion_a;
+variable src_good_a,src_w_a,src_tfinal_a,src_finaltimes_a;
+variable src_t_min_a,src_t_max_a, src_binedges_a, src_nbins_a, src_counts_a,src_finalcounts_a;
+
+variable bkg_t_a,bkg_x_a,bkg_y_a,bkg_gti_start_a,bkg_gti_stop_a;
+variable bkg_x0_a,bkg_y0_a,bkg_r_a,bkg_region_a,bkg_tregion_a,bkg_good_a;
+variable bkg_w_a,bkg_tfinal_a,bkg_t_min_a,bkg_t_max_a,bkg_binedges_a;
+variable bkg_nbins_a,bkg_counts_a,bkg_finalcounts_a,bkg_finaltimes_a;
+
+variable src_t_b,src_x_b,src_y_b,src_gti_start_b,src_gti_stop_b;
+variable src_x0_b,src_y0_b,src_r_b,src_region_b,src_tregion_b,src_good_b;
+variable src_w_b,src_tfinal_b,src_t_min_b,src_t_max_b,src_binedges_b;
+variable src_nbins_b,src_counts_b,src_finalcounts_b,src_finaltimes_b;
+
+variable bkg_t_b,bkg_x_b,bkg_y_b,bkg_gti_start_b,bkg_gti_stop_b;
+variable bkg_x0_b,bkg_y0_b,bkg_r_b,bkg_region_b,bkg_tregion_b,bkg_good_b;
+variable bkg_w_b,bkg_tfinal_b,bkg_t_min_b,bkg_t_max_b,bkg_binedges_b;
+variable bkg_nbins_b,bkg_counts_b,bkg_finalcounts_b,bkg_finaltimes_b;
+
+variable gAtemp,gA_cxy,gA_cxz,gA_cyz,gBtemp,gB_cxy,gB_cxz,gB_cyz;
+variable A_intensity,B_intensity;
+variable gxa,gya,gza,gxb,gyb,gzb;
+variable r_one,r_one_sorted_times,r_two,r_two_sorted_times;
+
+variable src_a_t,src_a_c,bkg_a_t,bkg_a_c,src_b_t,src_b_c,src_b_t;
+variable bkg_b_t,bkg_b_c,B_rmf,B_arf;
+variable dir_base,dirs,pipeline,spectra,light,gti_spectra,Rmg_OGIP_Compliance;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cleaning_and_extraction_script_I
+
+% Run in ISIS in the directory defined by dir_base below. 
+% Make sure you are in this appropriate directory before running, 
+% and make sure that you have a copy of the original data in this directory, 
+% knowing that the original data will be modified into the extracted data. 
+% The code below cleans the data and puts into directories: dir_base/dirs[i]/event_cl2 
+% since we are utilizing two observations). 
+% Make event_cl2 in each data directory before running, just to be safe.
+define cleaning_and_extraction_script_I() {
+add_to_isis_load_path("/man1/PACKAGES/isisscripts/share"); % ADJUST
+require("isisscripts");
+dir_base = "/man1/gisaac/NGC_2992/Extracted_Data"; % ADJUST
+dirs=["60160371002", "90501623002"];
+variable i,j,ldirs=length(dirs), command;
+pipeline=1;
+spectra=0;
+light=0;
+gti_spectra=1;
+
+
+
+if(pipeline)
+{
+   _for i (0,ldirs-1,1)
+   {
+      () =chdir(dir_base+dirs[i]);
+      command="nupipeline indir="+dir_base+dirs[i]+
+              "/ steminputs=nu"+dirs[i]+
+              " outdir=./event_cl2 clobber=yes > pipeline_log_"+dirs[i]+".txt";
+      () = system(command);
+   }
+}
+
+() = chdir(dir_base);
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cleaning_and_extraction_script_II
+
+% The code below extracts spectra from the cleaned data processed through ds9 to separate the signal and the background images from the NuSTAR observations.
+% Now, run SAOImageDS9 and extract eight separate data sets, two observation dates, 
+% each with two for each focal plane module files (FPMA and FPMB on NuSTAR) extracted once for source and once for background. 
+% I used nu60160371002A01_cl.evt and nu60160371002B01_cl.evt for the 60160371002 observation and nu90501623002A01_cl.evt and nu90501623002B01_cl.evt for the 90501623002 observation. 
+% These are found in their respective event_cl2 directories (so /man1/gisaac/NGC_2992/Extracted_Data/Observation_ID_Here/). 
+% Again, I extracted two data sets from each of these files, one for background and one for source. 
+% These must be named fpma_src, fpmb_src, fpma_bkg, and fpmb_bkg, for each observation, for the code below to work. 
+% For the source I used an image size of 50 arcsec, whereas for the background I used 150 arcsec. 
+% Each background was taken in the first and second quadrants of the chip/event image for 90501623002 and 60160371002, respectively. 
+% Ensure that scale in ds9 is set to log to clearly view the chip size. They were all saved in physical coordinates.
+
+% The following line of code was runs any necessary files in SAOImageDs9. Keep this in mind!
+% ds9 file_name_here &
+
+% The code below splits the data from FPMA and FPMB into spectra. They are run for each observation in the event_cl2 directory. These were run in the directory of dir_base below in ISIS.
+
+define cleaning_and_extraction_script_II() {
+dir_base = "/man1/gisaac/NGC_2992/Extracted_Data"; % ADJUST
+dirs=["60160371002", "90501623002"];
+variable i,j,ldirs=length(dirs), command;
+pipeline=0;
+spectra=1;
+light=0;
+gti_spectra=0;
+Rmg_OGIP_Compliance=0;
+
+if(spectra)
+{
+   _for i (0,ldirs-1,1)
+   {
+      % FPMA
+      command="nuproducts indir=./"+dirs[i]+"/event_cl2/ outdir=./"+dirs[i]+"/event_cl2/"+
+              " srcregionfile=./"+dirs[i]+"/event_cl2/fpma_src.reg"+
+              " bkgregionfile=./"+dirs[i]+"/event_cl2/fpma_bkg.reg"+
+              " stemout=nu"+dirs[i]+"_A"+
+              " steminputs=nu"+dirs[i]+
+              " bkgextract=yes binsize=10"+
+              " instrument=FPMA clobber=yes > spectra_log_A_"+dirs[i]+".txt";
+
+      () = system(command);
+
+      % FPMB
+      command="nuproducts indir=./"+dirs[i]+"/event_cl2/ outdir=./"+dirs[i]+"/event_cl2/"+
+              " srcregionfile=./"+dirs[i]+"/event_cl2/fpmb_src.reg"+
+              " bkgregionfile=./"+dirs[i]+"/event_cl2/fpmb_bkg.reg"+
+              " stemout=nu"+dirs[i]+"_B"+
+              " steminputs=nu"+dirs[i]+
+              " bkgextract=yes binsize=10"+
+              " instrument=FPMB clobber=yes > spectra_log_B_"+dirs[i]+".txt";
+
+      () = system(command);
+   }
+}
+
+() = chdir(dir_base);
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% cleaning_and_extraction_script_III
+
+% The next steps are located in my other document, Data Testing, marked starting from Pt.2. Do those steps first before doing these.
+% Pt.3: The following code was run before running isis, and was run in the directory described below:
+
+% The code below extracts the light curves for the given intervals for each observation split into their focal plane modules.
+% According to the NuSTAR documentation, PI values can be converted to energy values via the following equation, E = Channel_Number * 0.04 + 1.6.
+% From previous work (counts_bin_splitting) we deduced that our increments are:
+% A1: 5.50 and 9.10 keV (converted from 97 and 187 PI)
+% B1: 5.46 and 9.02 keV (converted from 96 and 185 PI)
+% A2: 5.54 and 9.14 keV (converted from 98 and 188 PI)
+% B2: 5.54 and 9.06 keV (converted from 98 and 186 PI)
+% So, for example, A01 will need three light curves; one from 3 - 5.50 keV (or 35 - 97 PI), 5.54 - 9.10 keV (or 98 - 187 PI), and 9.14 - 79 keV (188 - 1909 PI).
+% It is also useful to note that it sometimes the PI values are referred to as "channel numbers", such as in the NuSTAR manual. 
+% The values have been rounded to include the full, appropriate ranges (lower bounds have been rounded down, higher values rounded up). 
+% There may be overlap in the data when analyzing, but these edge cases aren't particularly significant to the analysis and give more data to look at. 
+% I had to run all of the following lines of code one by one.
+
+define cleaning_and_extraction_script_III() {
+dir_base = "/man1/gisaac/NGC_2992/Extracted_Data"; % ADJUST
+dirs=["60160371002", "90501623002"];
+variable i,j,ldirs=length(dirs), command;
+pipeline=0;
+spectra=0;
+light=1;
+gti_spectra=0;
+Rmf_OGIP_Compliance=0; % instructed to add by mentor
+
+
+% for nu60160371002 (A1 and B1)
+
+% FPMA (channels 35 - 97)
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+	" steminputs=nu60160371002"+
+	" pilow=35 pihigh=97"+ % According to nuproducts manual, min pi is 35 and max is 1909 for 3 keV and 79 keV, respectively.
+	" stemout=nu"+"_35_97_A01"+ 
+	" binsize=10"+ 
+	" instrument=FPMA clobber=yes > lc_35_97_log_A_"+".txt"; % ADJUST
+        
+() = system(command);
+      
+% channels 98 - 187
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu60160371002"+
+	" pilow=98 pihigh=187"+
+	" stemout=nu"+"_98_187_A01"+
+	" binsize=10"+
+	" instrument=FPMA clobber=yes > lc_98_187_log_A_"+".txt";
+       
+() = system(command);
+        
+% channels 188 - 1909        
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu60160371002"+
+	" pilow=188 pihigh=1909"+  
+	" stemout=nu"+"_188_1909_A01"+
+	" binsize=10"+
+	" instrument=FPMA clobber=yes > lc_188_1909_log_A_"+".txt";
+
+() = system(command);
+print(command);
+      
+% FPMB (channels 35 - 96)
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_src.reg"+
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_bkg.reg"+
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu60160371002"+
+	" pilow=35 pihigh=96"+
+	" stemout=nu"+"_35_96_B01"+
+	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_35_96_log_B_"+".txt";
+
+() = system(command);
+
+% channels 97 - 185
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/  outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+	" steminputs=nu60160371002"+
+	" pilow=97 pihigh=185"+
+	" stemout=nu"+"_97_185_B01"+
+	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_97_185_log_B_"+".txt";
+
+() = system(command);
+        
+% channels 186 - 1909
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/fpmb_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+	" steminputs=nu60160371002"+
+	" pilow=186 pihigh=1909"+
+	" stemout=nu"+"_186_1909_B01"+
+ 	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_186_1909_log_B_"+".txt";
+
+() = system(command);
+print(command);
+
+% for nu90501623002 (A2 and B2)
+
+% FPMA (channels 35 - 98)
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+ 	" steminputs=nu90501623002"+
+	" pilow=35 pihigh=98"+
+	" stemout=nu"+"_35_98_A01"+
+	" binsize=10"+
+	" instrument=FPMA clobber=yes > lc_35_98_log_A_"+".txt";
+        
+() = system(command);
+      
+% channels 99 - 188
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu90501623002"+
+	" pilow=99 pihigh=188"+
+	" stemout=nu"+"_99_188_A01"+
+	" binsize=10"+
+	" instrument=FPMA clobber=yes > lc_99_188_log_A_"+".txt";
+       
+() = system(command);
+        
+% channels 189 - 1909        
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpma_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu90501623002"+
+	" pilow=189 pihigh=1909"+
+	" stemout=nu"+"_189_1909_A01"+
+	" binsize=10"+
+	" instrument=FPMA clobber=yes > lc_189_1909_log_A_"+".txt";
+
+() = system(command);
+print(command);
+      
+% FPMB (channels 35 - 98)
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no "+
+	" steminputs=nu90501623002"+
+	" pilow=35 pihigh=98"+
+	" stemout=nu"+"_35_98_B01"+
+	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_35_98_log_B_"+".txt";
+
+() = system(command);
+
+% channels 99 - 186
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/  outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+	" steminputs=nu90501623002"+
+	" pilow=99 pihigh=186"+
+	" stemout=nu"+"_99_186_B01"+
+	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_99_186_log_B_"+".txt";
+
+() = system(command);
+        
+% channels 187 - 1909
+command="nuproducts indir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/ outdir=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/"+ % ADJUST
+	" srcregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_src.reg"+ % ADJUST
+	" bkgregionfile=/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/fpmb_bkg.reg"+ % ADJUST
+	" runmkarf=no runmkrmf=no"+
+	" steminputs=nu90501623002"+
+	" pilow=187 pihigh=1909"+
+	" stemout=nu"+"_187_1909_B01"+
+	" binsize=10"+
+	" instrument=FPMB clobber=yes > lc_187_1909_log_B_"+".txt";
+
+() = system(command);
+print(command);
+
+% Yes, there are better ways to write this. Sue me.
+% The code should generate 12 light curves.
+% The next part is located in my other document, Data Testing, marked starting at Pt.4.
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+define NuSTAR_load_temp() { % Loads data into ISIS. Linear Axes by default for graphing.
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	
+	% A1 - Data index 1; A2 - Data index 2...
+	A1 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_A_sr.pha"); % ADJUST
+	A2 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_A_sr.pha"); % ADJUST
+	B1 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu60160371002_B_sr.pha"); % ADJUST
+	B2 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_B_sr.pha"); % ADJUST
+	xlin; ylin;
+}
+
+define figure1() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16});
+}
+define figure2() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMB");
+	plot_counts({4,4}; bkg={0,-1}, dcol={8,16});
+}
+define figure3() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMA");
+	plot_counts({1,1}; bkg={0,-1}, dcol={4,16});
+}
+define figure4() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMB");
+	plot_counts({2,2}; bkg={0,-1}, dcol={4,16});
+}
+define example1() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={3,10});
+}
+define example2() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={10,30});
+}
+define example3() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={30,79});
+}
+define counts_bin_splitting() {
+	NuSTAR_load_temp;
+	dA1 = get_data_counts(1);
+	dB1 = get_data_counts(2);
+	dA2 = get_data_counts(3);
+	dB2 = get_data_counts(4);
+	(dA1_kev_lo,dA1_kev_hi) = _A(dA1.bin_lo,dA1.bin_hi); % Inverts values to convert from photon wavelength to energy.
+	(dB1_kev_lo,dB1_kev_hi) = _A(dB1.bin_lo,dB1.bin_hi);
+	(dA2_kev_lo,dA2_kev_hi) = _A(dA2.bin_lo,dA2.bin_hi);
+	(dB2_kev_lo,dB2_kev_hi) = _A(dB2.bin_lo,dB2.bin_hi);
+	dA1_counts_kev = reverse(dA1.value); % d.value here returns the number of the bin, not the value of energy.
+	dB1_counts_kev = reverse(dB1.value);
+	dA2_counts_kev = reverse(dA2.value);
+	dB2_counts_kev = reverse(dB2.value);
+	dA1_cs = cumsum(dA1_counts_kev)/sum(dA1_counts_kev);
+	dB1_cs = cumsum(dB1_counts_kev)/sum(dB1_counts_kev);
+	dA2_cs = cumsum(dA2_counts_kev)/sum(dA2_counts_kev);
+	dB2_cs = cumsum(dB2_counts_kev)/sum(dB2_counts_kev);
+	dA1_idx1 = wherefirst(dA1_cs >= 0.33);
+	dA1_idx2 = wherefirst(dA1_cs >= 0.66);
+	dB1_idx1 = wherefirst(dB1_cs >= 0.33);
+	dB1_idx2 = wherefirst(dB1_cs >= 0.66);
+	dA2_idx1 = wherefirst(dA2_cs >= 0.33);
+	dA2_idx2 = wherefirst(dA2_cs >= 0.66);
+	dB2_idx1 = wherefirst(dB2_cs >= 0.33);
+	dB2_idx2 = wherefirst(dB2_cs >= 0.66);
+	vmessage("First increment A1 (PI channel):");
+	print(dA1_idx1);
+	vmessage("Second increment A1 (PI channel):");
+	print(dA1_idx2);
+	vmessage("First increment B1 (PI channel):");
+	print(dB1_idx1);
+	vmessage("Second increment B1 (PI channel):");
+	print(dB1_idx2);
+	vmessage("First increment A2 (PI channel):");
+	print(dA2_idx1);
+	vmessage("Second increment A2 (PI channel):");
+	print(dA2_idx2);
+	vmessage("First increment B2 (PI channel):");
+	print(dB2_idx1);
+	vmessage("Second increment B2 (PI channel):");
+	print(dB2_idx2);
+	vmessage("First increment A1 (keV):");
+	print((dA1_kev_lo[dA1_idx1]+dA1_kev_hi[dA1_idx1])/2);
+	vmessage("Second increment A1 (keV):");
+	print((dA1_kev_lo[dA1_idx2]+dA1_kev_hi[dA1_idx2])/2);
+	vmessage("First increment B1 (keV):");
+	print((dB1_kev_lo[dB1_idx1]+dB1_kev_hi[dB1_idx1])/2);
+	vmessage("Second increment B1 (keV):");
+	print((dB1_kev_lo[dB1_idx2]+dB1_kev_hi[dB1_idx2])/2);
+	vmessage("First increment A2 (keV):");
+	print((dA2_kev_lo[dA2_idx1]+dA2_kev_hi[dA2_idx1])/2);
+	vmessage("Second increment A2 (keV):");
+	print((dA2_kev_lo[dA2_idx2]+dA2_kev_hi[dA2_idx2])/2);
+	vmessage("First increment B2 (keV):");
+	print((dB2_kev_lo[dB2_idx1]+dB2_kev_hi[dB2_idx1])/2);
+	vmessage("Second increment B2 (keV):");
+	print((dB2_kev_lo[dB2_idx2]+dB2_kev_hi[dB2_idx2])/2);
+	vmessage("See counts_bin_splitting function in project_code.isis for derivations of these values");
+}
+define figure5() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA, PI Channels 35 - 97 (3 - 5.5 keV)");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={3,5.5});
+}
+define figure6() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA, PI Channels 98 - 187 (5.54 - 9.10 keV)");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={5.54,9.10});
+}
+define figure7() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMA, PI Channels 188 - 1909 (9.14 keV - 79 keV)");
+	plot_counts({3,3}; bkg={0,-1}, dcol={8,16}, xrange={9.14,79});
+}
+define figure8() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMB, PI Channels 35 - 96 (3 - 5.46 keV)");
+	plot_counts({4,4}; bkg={0,-1}, dcol={8,16}, xrange={3,5.46});
+}
+define figure9() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMB, PI Channels 97 - 185 (5.5 - 9.02 keV)");
+	plot_counts({4,4}; bkg={0,-1}, dcol={8,16}, xrange={5.5,9.02});
+}
+define figure10() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("60160371002, FPMB, PI Channels 186 - 1909 (9.06 - 79 keV)");
+	plot_counts({4,4}; bkg={0,-1}, dcol={8,16}, xrange={9.06,79});
+}
+define figure11() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMA, PI Channels 35 - 98 (3 - 5.54 keV)");
+	plot_counts({1,1}; bkg={0,-1}, dcol={4,16}, xrange={3,5.54});
+}
+define figure12() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMA, PI Channels 99 - 188 (5.58 - 9.14 keV)");
+	plot_counts({1,1}; bkg={0,-1}, dcol={4,16}, xrange={5.58,9.14});
+}
+define figure13() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMA, PI Channels 189 - 1909 (9.18 - 79 keV)");
+	plot_counts({1,1}; bkg={0,-1}, dcol={4,16}, xrange={9.18,79});
+}
+define figure14() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMB, PI Channels 35 - 98 (3 - 5.54 keV)");
+	plot_counts({2,2}; bkg={0,-1}, dcol={4,16}, xrange={3,5.54});
+}
+define figure15() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMB, PI Channels 99 - 186 (5.58 - 9.06 keV)");
+	plot_counts({2,2}; bkg={0,-1}, dcol={4,16}, xrange={5.58,9.06});
+}
+define figure16() {
+	NuSTAR_load_temp;
+	xlog; ylog; title("90501623002, FPMB, PI Channels 187 - 1909 (9.10 keV - 79 keV)");
+	plot_counts({2,2}; bkg={0,-1}, dcol={4,16}, xrange={9.10,79});
+}
+define s_c() {
+	(xta,xra,xra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_35_98_A01_sr.lc", "time", "rate", "error");
+	(xtb,xrb,xrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_35_98_B01_sr.lc", "time", "rate", "error");
+	xa = sitar_rebin_rate(xta,600,xra,xra_e;delgap);
+	xb = sitar_rebin_rate(xtb,600,xrb,xrb_e;delgap, usr_bin=xa);
+	xcon = struct{rate, err, time};
+	xcon.rate = (xa.rate+xb.rate) / 2;
+	xcon.err = sqrt(xa.err^2+xb.err^2);
+	xcon.time = ((xa.bin_lo+xa.bin_hi) / 2 + (xb.bin_lo+xb.bin_hi) / 2) / 2;
+	(yta,yra,yra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_99_188_A01_sr.lc", "time", "rate", "error");
+	(ytb,yrb,yrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_99_186_B01_sr.lc", "time", "rate", "error");
+	ya = sitar_rebin_rate(yta,600,yra,yra_e;delgap);
+	yb = sitar_rebin_rate(ytb,600,yrb,yrb_e;delgap, usr_bin=ya);
+	ycon = struct{rate,err, time};
+	ycon.rate = (ya.rate+yb.rate) / 2;
+	ycon.err = sqrt(ya.err^2+yb.err^2);
+	ycon.time = ((ya.bin_lo+ya.bin_hi) / 2 + (yb.bin_lo+yb.bin_hi) / 2) / 2;
+	(zta,zra,zra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_189_1909_A01_sr.lc", "time", "rate", "error");
+	(ztb,zrb,zrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu_187_1909_B01_sr.lc", "time", "rate", "error");
+	za = sitar_rebin_rate(zta,600,zra,zra_e;delgap);
+	zb = sitar_rebin_rate(ztb,600,zrb,zrb_e;delgap, usr_bin=za);
+	zcon = struct{rate,err,time};
+	zcon.rate = (za.rate+zb.rate) / 2;
+	zcon.err = sqrt(za.err^2+zb.err^2);
+	zcon.time = ((za.bin_lo+za.bin_hi) / 2 + (zb.bin_lo+zb.bin_hi) / 2) / 2;
+	
+	% Observation 60160371002 defined below
+	(b_xta,b_xra,b_xra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_35_97_A01_sr.lc", "time", "rate", "error");
+	(b_xtb,b_xrb,b_xrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_35_96_B01_sr.lc", "time", "rate", "error");
+	b_xa = sitar_rebin_rate(b_xta,300,b_xra,b_xra_e;delgap);
+	b_xb = sitar_rebin_rate(b_xtb,300,b_xrb,b_xrb_e;delgap, usr_bin=b_xa);
+	b_xcon = struct{rate,err,time};
+	b_xcon.rate = (b_xa.rate + b_xb.rate) / 2;
+	b_xcon.err = sqrt(b_xa.err^2+b_xb.err^2);
+	b_xcon.time = ((b_xa.bin_lo+b_xa.bin_hi) / 2 + (b_xb.bin_lo+b_xb.bin_hi) / 2) / 2;
+	(b_yta,b_yra,b_yra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_98_187_A01_sr.lc", "time", "rate", "error");
+	(b_ytb, b_yrb, b_yrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_97_185_B01_sr.lc", "time", "rate", "error");
+	b_ya = sitar_rebin_rate(b_yta,300,b_yra,b_yra_e;delgap);
+	b_yb = sitar_rebin_rate(b_ytb,300,b_yrb,b_yrb_e;delgap, usr_bin=b_ya);
+	b_ycon = struct{rate,err,time};
+	b_ycon.rate = (b_ya.rate + b_yb.rate) / 2;
+	b_ycon.err = sqrt(b_ya.err^2+b_yb.err^2);
+	b_ycon.time = ((b_ya.bin_lo+b_ya.bin_hi) / 2 + (b_yb.bin_lo+b_yb.bin_hi) / 2) / 2;
+	(b_zta,b_zra,b_zra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_188_1909_A01_sr.lc", "time", "rate", "error");
+	(b_ztb,b_zrb, b_zrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu_186_1909_B01_sr.lc", "time", "rate", "error");
+	b_za = sitar_rebin_rate(b_zta,300,b_zra,b_zra_e;delgap);
+	b_zb = sitar_rebin_rate(b_ztb,300,b_zrb,b_zrb_e; delgap, usr_bin=b_za);
+	b_zcon = struct{rate,err,time};
+	b_zcon.rate = (b_za.rate+b_zb.rate) / 2;
+	b_zcon.err = sqrt(b_za.err^2+b_zb.err^2);
+	b_zcon.time = ((b_za.bin_lo+b_za.bin_hi) / 2 + (b_zb.bin_lo+b_zb.bin_hi) / 2) / 2;
+	
+	% 90501623002 colors are defined below.
+	cxy = struct{cons,err,time};
+	cxy.cons = (xcon.rate-ycon.rate)/(xcon.rate+ycon.rate);
+	cxy.err = 2/(xcon.rate + ycon.rate)^2*(ycon.rate^2*xcon.err^2+xcon.rate^2*ycon.err^2)^1/2;
+	cxy.time = (xcon.time+ycon.time) / 2;
+	cyx = struct{cons,err,time};
+	cyx.cons = (ycon.rate-xcon.rate)/(ycon.rate+xcon.rate);
+	cyx.err =  2/(ycon.rate+xcon.rate)^2*(xcon.rate^2*ycon.err^2+ycon.rate^2*xcon.err^2)^1/2;
+	cyx.time = (ycon.time+xcon.time) / 2;
+	cyz = struct{cons,err,time};
+	cyz.cons = (ycon.rate-zcon.rate)/(ycon.rate+zcon.rate);
+	cyz.err = 2/(ycon.rate+zcon.rate)^2*(zcon.rate^2*ycon.err^2+ycon.rate^2*zcon.err^2)^1/2;
+	cyz.time = (ycon.time+zcon.time) / 2;
+	czy = struct{cons,err,time};
+	czy.cons = (zcon.rate-ycon.rate)/(zcon.rate+ycon.rate);
+	czy.err = 2/(zcon.rate+ycon.rate)^2*(ycon.rate^2*zcon.err^2+zcon.rate^2*ycon.err^2)^1/2;
+	czy.time = (zcon.time+ycon.time) / 2;
+	cxz = struct{cons,err,time};
+	cxz.cons = (xcon.rate-zcon.rate)/(xcon.rate+zcon.rate);
+	cxz.err = 2/(xcon.rate+zcon.rate)^2*(zcon.rate^2*xcon.err^2+xcon.rate^2*zcon.err^2)^1/2;
+	cxz.time = (xcon.time+zcon.time) / 2;
+	czx = struct{cons,err,time};
+	czx.cons = (zcon.rate-xcon.rate)/(zcon.rate+xcon.rate);
+	czx.err = 2/(zcon.rate+xcon.rate)^2*(xcon.rate^2*zcon.err^2+zcon.rate^2*xcon.err^2)^1/2;
+	czx.time = (zcon.time+xcon.time) / 2;
+	
+	% Observation 60160371002 colors
+	b_cxy = struct{cons,err,time};
+	b_cxy.cons = (b_xcon.rate-b_ycon.rate)/(b_xcon.rate+b_ycon.rate);
+	b_cxy.err = 2/(b_xcon.rate+b_ycon.rate)^2*(b_ycon.rate^2*b_xcon.err^2+b_xcon.rate^2*b_ycon.err^2)^1/2;
+	b_cxy.time = (b_xcon.time+b_ycon.time) / 2;
+	b_cyx = struct{cons,err,time};
+	b_cyx.cons = (b_ycon.rate-b_xcon.rate)/(b_ycon.rate+b_xcon.rate);
+	b_cyx.err = 2/(b_ycon.rate+b_xcon.rate)^2*(b_xcon.rate^2*b_ycon.err^2+b_ycon.rate^2*b_xcon.err^2)^1/2;
+	b_cyx.time = (b_ycon.time+b_xcon.time) / 2;
+	b_cyz = struct{cons,err,time};
+	b_cyz.cons = (b_ycon.rate-b_zcon.rate)/(b_ycon.rate+b_zcon.rate);
+	b_cyz.err = 2/(b_ycon.rate+b_zcon.rate)^2*(b_zcon.rate^2*b_ycon.err^2+b_ycon.rate^2*b_zcon.err^2)^1/2;
+	b_cyz.time = (b_ycon.time+b_zcon.time) / 2;
+	b_czy = struct{cons,err,time};
+	b_czy.cons = (b_zcon.rate-b_ycon.rate)/(b_zcon.rate+b_ycon.rate);
+	b_cxy.err = 2/(b_zcon.rate+b_ycon.rate)^2*(b_ycon.rate^2*b_zcon.err^2+b_zcon.rate^2*b_ycon.err^2)^1/2;
+	b_cxy.time = (b_xcon.time+b_ycon.time) / 2;
+	b_cxz = struct{cons,err,time};
+	b_cxz.cons = (b_xcon.rate-b_zcon.rate)/(b_xcon.rate+b_zcon.rate);
+	b_cxz.err = 2/(b_xcon.rate+b_zcon.rate)^2*(b_zcon.rate^2*b_xcon.err^2+b_xcon.rate^2*b_zcon.err^2)^1/2;
+	b_cxz.time = (b_xcon.time+b_zcon.time) / 2;
+	b_czx = struct{cons,err,time};
+	b_czx.cons = (b_zcon.rate-b_xcon.rate)/(b_zcon.rate+b_xcon.rate);
+	b_czx.err = 2/(b_zcon.rate+b_xcon.rate)^2*(b_xcon.rate^2*b_zcon.err^2+b_zcon.rate^2*b_xcon.err^2)^1/2;
+	b_czx.time = (b_zcon.time+b_xcon.time) / 2;
+	
+	% Good color intervals (color data that uses GTIs)
+	gb_cxy_temp = wherenot(isnan(b_cxy.cons) or isinf(b_cxy.cons) or isnan(b_cxy.err) or isinf(b_cxy.err) or
+isnan(b_cyz.cons) or isinf(b_cyz.cons) or isnan(b_cyz.err) or isinf(b_cyz.err) or isnan(b_cxz.cons) or isinf(b_cxz.cons) or isnan(b_cxz.err) or isinf(b_cxz.err));
+	gb_cxy = struct{cons,err,time};
+	gb_cxy.cons = b_cxy.cons[gb_cxy_temp];
+	gb_cxy.err = b_cxy.err[gb_cxy_temp];
+	gb_cxy.time = b_cxy.time[gb_cxy_temp];
+	gb_cyz_temp = wherenot(isnan(b_cxy.cons) or isinf(b_cxy.cons) or isnan(b_cxy.err) or isinf(b_cxy.err) or
+isnan(b_cyz.cons) or isinf(b_cyz.cons) or isnan(b_cyz.err) or isinf(b_cyz.err) or isnan(b_cxz.cons) or isinf(b_cxz.cons) or isnan(b_cxz.err) or isinf(b_cxz.err));
+	gb_cyz = struct{cons,err,time};
+	gb_cyz.cons = b_cyz.cons[gb_cyz_temp];
+	gb_cyz.err = b_cyz.err[gb_cyz_temp];
+	gb_cyz.time = b_cyz.time[gb_cyz_temp];
+	gb_cxz_temp = wherenot(isnan(b_cxy.cons) or isinf(b_cxy.cons) or isnan(b_cxy.err) or isinf(b_cxy.err) or
+isnan(b_cyz.cons) or isinf(b_cyz.cons) or isnan(b_cyz.err) or isinf(b_cyz.err) or isnan(b_cxz.cons) or isinf(b_cxz.cons) or isnan(b_cxz.err) or isinf(b_cxz.err));
+	gb_cxz = struct{cons,err,time};
+	gb_cxz.cons = b_cxz.cons[gb_cxz_temp];
+	gb_cxz.err = b_cxz.err[gb_cxz_temp];
+	gb_cxz.time = b_cxz.time[gb_cxz_temp];
+	
+	% Adjusts sizes of b_xcon, b_ycon, and b_zcon to match sizes of second observation colors to compare rates and colors and overplot both data sets to compare behavior of emissions between observations.
+	
+	gcolor_indices = wherenot(isnan(b_cxy.cons) or isinf(b_cxy.cons) or isnan(b_cxy.err) or isinf(b_cxy.err) or
+isnan(b_cyz.cons) or isinf(b_cyz.cons) or isnan(b_cyz.err) or isinf(b_cyz.err) or isnan(b_cxz.cons) or isinf(b_cxz.cons) or isnan(b_cxz.err) or isinf(b_cxz.err));
+	gb_xcon = struct{rate,err,time};
+	gb_xcon.rate = b_xcon.rate[gcolor_indices];
+	gb_xcon.err = b_xcon.err[gcolor_indices];
+	gb_xcon.time = b_xcon.time[gcolor_indices];
+	gb_ycon = struct{rate,err,time};
+	gb_ycon.rate = b_ycon.rate[gcolor_indices];
+	gb_ycon.err = b_ycon.err[gcolor_indices];
+	gb_ycon.time = b_ycon.time[gcolor_indices];
+	gb_zcon = struct{rate,err,time};
+	gb_zcon.rate = b_zcon.rate[gcolor_indices];
+	gb_zcon.err = b_zcon.err[gcolor_indices];
+	gb_zcon.time = b_zcon.time[gcolor_indices];
+	
+	% Sum of all rates (for comparison in graphing);
+	sum_rates = struct{rate,err};
+	sum_rates.rate = xcon.rate+ycon.rate+zcon.rate;
+	sum_rates.err = sqrt(xcon.err^2+ycon.err^2+zcon.err^2);
+	gb_sum_rates = struct{rate,err};
+	gb_sum_rates.rate = gb_xcon.rate+gb_ycon.rate+gb_zcon.rate;
+	gb_sum_rates.err = sqrt(gb_xcon.err^2+gb_ycon.err^2+gb_zcon.err^2);
+}
+define figure17() {
+	s_c;
+	connect_points(0);
+	xlabel("cxy"); ylabel("cyz");
+	title("Colors xy vs. yz, 90501623002, FPMA and FPMB");
+	plotxy(cxy.cons,cxy.err,cxy.err,cyz.cons,cyz.err,cyz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+	
+}
+define figure18() {
+	s_c;
+	connect_points(0);
+	xlabel("cxy"); ylabel("cxz");
+	title("Colors xy vs. xz, 90501623002, FPMA and FPMB");
+	plotxy(cxy.cons,cxy.err,cxy.err,cxz.cons,cxz.err,cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+}
+define figure19() {
+	s_c;
+	connect_points(0);
+	xlabel("cyz"); ylabel("cxz");
+	title("Colors yz vs. xz, 90501623002, FPMA and FPMB");
+	plotxy(cyz.cons,cyz.err,cyz.err,cxz.cons,cxz.err,cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+}
+define example4() {
+	s_c;
+	connect_points(0);
+	xlabel("b_cxy"); ylabel("b_cyz");
+	title("Colors xy vs. yz, 60160371002, FPMA and FPMB");
+	plotxy(b_cxy.cons,b_cxy.err,b_cxy.err,b_cyz.cons,b_cyz.err,b_cyz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);	
+}
+define example5() {
+	s_c;
+	connect_points(0);
+	xlabel("b_cxy"); ylabel("b_cxz");
+	title("Colors xy vs. xz, 60160371002, FPMA and FPMB");
+	plotxy(b_cxy.cons,b_cxy.err,b_cxy.err,b_cxz.cons,b_cxz.err,b_cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);
+}
+define example6() {
+	s_c;
+	connect_points(0);
+	xlabel("b_cyz"); ylabel("b_cxz");
+	title("Colors yz vs. xz, 60160371002, FPMA and FPMB");
+	plotxy(b_cyz.cons,b_cyz.err,b_cyz.err,b_cxz.cons,b_cxz.err,b_cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);
+}
+define figure20(){
+	s_c;
+	connect_points(0);
+	xlabel("gb_cxy"); ylabel("gb_cyz");
+	title("GTI Colors xy vs. yz, 60160371002, FPMA and FPMB");
+	plotxy(gb_cxy.cons,gb_cxy.err,gb_cxy.err,gb_cyz.cons,gb_cyz.err,gb_cyz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);
+}
+define figure21() {
+	s_c;
+	connect_points(0);
+	xlabel("gb_cxy"); ylabel("gb_cxz");
+	title("GTI Colors xy vs. xz, 60160371002, FPMA and FPMB");
+	plotxy(gb_cxy.cons,gb_cxy.err,gb_cxy.err,gb_cxz.cons,gb_cxz.err,gb_cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);
+}
+define figure22() {
+	s_c;
+	connect_points(0);
+	xlabel("gb_cyz"); ylabel("gb_cxz");
+	title("GTI Colors yz vs. xz, 60160371002, FPMA and FPMB");
+	plotxy(gb_cyz.cons,gb_cyz.err,gb_cyz.err,gb_cxz.cons,gb_cxz.err,gb_cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=8);
+}
+define figure23() {
+	s_c;
+	connect_points(0);
+	xlabel("con_cxy"); ylabel("con_cyz"); title("Colors of xy and yz from two observations, FPMA and FPMB");
+	plotxy(cxy.cons,cxy.err,cxy.err,cyz.cons,cyz.err,cyz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+	plotxy(gb_cxy.cons,gb_cxy.err,gb_cxy.err,gb_cyz.cons,gb_cyz.err,gb_cyz.err; oplt=1, dcol=8);
+}
+define figure24() {
+	s_c;
+	connect_points(0);
+	xlabel("con_cxy"); ylabel("con_cxz"); title("Colors of xy and xz from two observations, FPMA and FPMB");
+	plotxy(cxy.cons,cxy.err,cxy.err,cxz.cons,cxz.err,cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+	plotxy(gb_cxy.cons,gb_cxy.err,gb_cxy.err,gb_cxz.cons,gb_cxz.err,gb_cxz.err; oplt=1, dcol=8);
+}
+define figure25() {	
+	s_c;
+	connect_points(0);
+	xlabel("con_cyz"); ylabel("con_cxz"); title("Colors of yz and xz from two observations FPMA and FPMB");
+	plotxy(cyz.cons,cyz.err,cyz.err,cxz.cons,cxz.err,cxz.err; xrange={-0.5,0.5}, yrange={-0.2,0.2}, dcol=4);
+	plotxy(gb_cyz.cons,gb_cyz.err,gb_cyz.err,gb_cxz.cons,gb_cxz.err,gb_cxz.err; oplt=1, dcol=8);
+
+}
+define figure26() {
+	s_c;
+	connect_points(0);
+	xlabel("time"); ylabel("con_cxy"); title("Color of xy vs. time from two observations"); 
+	plotxy(cxy.time,,,cxy.cons,cxy.err,cxy.err; dcol=4, xrange={NULL,NULL},yrange={NULL,NULL});
+	plotxy(gb_cxy.time,,,gb_cxy.cons,gb_cxy.err,gb_cxy.err; oplt=1, dcol=8);
+}
+define figure27() { 
+	s_c;
+	connect_points(0);
+	xlabel("time"); ylabel("con_cyz"); title("Color of yz vs. time from two observations"); 
+	plotxy(cyz.time,,,cyz.cons,cyz.err,cyz.err; dcol=4, xrange={NULL,NULL},yrange={NULL,NULL});
+	plotxy(gb_cyz.time,,,gb_cyz.cons,gb_cyz.err,gb_cyz.err; oplt=1, dcol=8);
+}
+define figure28() {
+	s_c;
+	connect_points(0);
+	xlabel("time"); ylabel("con_cxz"); title("Color of xz vs. time from two observations"); 
+	plotxy(cxz.time,,,cxz.cons,cxz.err,cxz.err; dcol=4, xrange={NULL,NULL},yrange={NULL,NULL});
+	plotxy(gb_cxz.time,,,gb_cxz.cons,gb_cxz.err,gb_cxz.err; oplt=1, dcol=8);
+}
+define figure29() { 
+	s_c;
+	connect_points(0);
+	xlabel("Rates (xyz)"); ylabel("con_cxy"); title("Rate of three energy bands (Intensity) vs. color of xy from two observations, FPMA and FPMB");
+	plotxy(sum_rates.rate,sum_rates.err,sum_rates.err,cxy.cons,cxy.err,cxy.err; xrange={0, 6}, yrange={-0.5,0.5}, decol=4, dcol=4);
+	plotxy(gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err,gb_cxy.cons,gb_cxy.err,gb_cxy.err; oplt=1, decol=8,dcol=8);
+}
+define figure30() { 
+	s_c;
+	connect_points(0);
+	xlabel("Rates (xyz)"); ylabel("con_cyz"); title("Rate of three energy bands (Intensity) vs. color of yz from two observations FPMA and FPMB");
+	plotxy(sum_rates.rate,sum_rates.err,sum_rates.err,cyz.cons,cyz.err,cyz.err; xrange={0, 6}, yrange={-0.5,0.5}, decol=4, dcol=4);
+	plotxy(gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err,gb_cyz.cons,gb_cyz.err,gb_cyz.err; oplt=1, decol=8, dcol=8);
+}
+define figure31() {
+	s_c;
+	connect_points(0);
+	xlabel("Rates (xyz)"); ylabel("con_cxz"); title("Rate of three energy bands (Intensity) and color of xz from two observations");
+	plotxy(sum_rates.rate,sum_rates.err,sum_rates.err,cxz.cons,cxz.err,cxz.err; xrange={0, 6}, yrange={-0.5,0.5}, decol=4, dcol=4);
+	plotxy(gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err,gb_cxz.cons, gb_cxz.err,gb_cxz.err; oplt=1, decol=8,dcol=8);
+}
+define modeling_setup() {
+	delete_data(all_data);
+	() = xspec_abund("wilm"); % Necessary to make sure the elemental abundances of the interstellar medium are what we want
+	Remove_Spectrum_Gaps=1;
+
+	() = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_A_sr.pha");
+	() = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_B_sr.pha");
+	() = load_data("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu60160371002_A_sr.pha");
+	() = load_data("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu60160371002_B_sr.pha");
+
+	usr_grid(1,-0.5,3,0.002); % We will eventually use models that need to be evaluated beyond the edge
+	usr_grid(2,-0.5,3,0.002); % of the noticed data; this makes sure that they are evaluated there. This sets
+	usr_grid(3,-0.5,3,0.002); % the evaluation to happen from sqrt(10) keV + 1000 keV, in logarithmic steps.
+	usr_grid(4,-0.5,3,0.002);
+
+	% The following makes sure that the spectrum is grouped to be a fraction of the detector resolution,
+	% and each channel has sufficient signal-to-noise;
+
+	group([1,2];min_chan=[[2:10]],bounds=[3.,7.,12.,19.,27.,37.,48.,61.,75.],unit="kev",min_sn=5);
+	notice_values([1,2],3.,70.;unit="kev");
+	group([3,4];min_chan=[[2:10]],bounds=[3.,7.,12.,19.,27.,37.,48.,61.,75.],unit="kev",min_sn=5);
+	notice_values([3,4],3.,70.;unit="kev");
+	vmessage(" modeling_setup loaded successfully.");
+}
+
+define example7() { 
+	% This is a model for observation 90501623002; obA = 90501623002, obB = 60160371002		
+	exclude(all_data); include([1,2]);
+	
+	% fit_fun("constant(Isis_Active_Dataset)*(modelgoeshere)"); this is template for models
+	% In our case,
+		
+	fit_fun("constant(Isis_Active_Dataset)*law(1)*tbabs(1)");
+	list_free;
+		
+	% Freeze 1,2,3, and 4.
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,1);
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	% Was told to use a gamma parameter (phoIndex) of about 1.5
+	set_par("powerlaw(1).PhoIndex",1.5,0,1.2,1.8);
+	% Seyfert galaxies are usually in range of 1e-5 to 1e-1 for all norms from what I understand.
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	
+	% Using HEASARC nH tool, I found a value of 5.21e+20 cm-2, which converted to nH units is 0.0521 (which uses 1e+22 cm-2 instead). The range covers most cases.
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	
+	% Plotting and adjusting chi values
+	renorm_counts;
+	fit_counts;
+	% Then,
+	title("Model of 90501623002 without residual compensation");
+	xlog; ylog;
+	plot_unfold({[1,2]}; res=2); % The {[1,2]} adds up both focal plane modules into one composite data set.
+}
+define example8() { 		
+	exclude(all_data); include([3,4]);
+	
+	fit_fun("constant(Isis_Active_Dataset)*powerlaw(1)*tbabs(1)");
+	list_free;
+
+	% Freeze 1,2,3, and 4.
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,1);
+	
+	set_par("powerlaw(1).PhoIndex",1.5,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	
+	% Plotting and adjusting chi values
+	renorm_counts;
+	fit_counts;
+	% Then,
+	title("Model of 60160371002 without residual compensation");
+	xlog; ylog;
+	plot_unfold({[3,4]}; res=2);
+}
+define example9() {
+	% We must fit the residuals found in the 0 to 10 keV range; this looks like an emission line, so we use gaussian(1) on the power law. 
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1))*tbabs(1)");
+	exclude(all_data); include([1,2]);
+		
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,1);
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6.2,6.4);
+		
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 with residual compensation");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2);
+}
+define example10() {
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1))*tbabs(1)");
+	exclude(all_data); include([3,4]);
+		
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6.2,6.4);
+		
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 with residual compensation (gaussian)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2);
+}	
+define obA_modelI() {
+
+	% fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	exclude(all_data); include([1,2]);
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1); % Free one constant
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	% set_par("bknpower(1).norm",1e-3,0,1e-5,1e-1);
+	% set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	% set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	% set_par("bknpower(1).BreakE",10,0,8,15);
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (bknpower, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obB_modelI() { 
+
+	% fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	exclude(all_data); include([3,4]);
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	% set_par("bknpower(1).norm",1e-3,0,1e-5,1e-1);
+	% set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	% set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	% set_par("bknpower(1).BreakE",10,0,8,15);
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (powerlaw, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obA_bknpower_tbabs_gaussian_highecut() {
+
+	fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1))*tbabs(1)");
+	
+	exclude(all_data); include([1,2]);
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1); % Free one constant
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("bknpower(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	set_par("bknpower(1).BreakE",10,0,8,15);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (bknpower, tbabs, gaussian, highecut)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obA_bknpower_tbabs_gaussian_highecut_laor() {
+
+	fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+
+	exclude(all_data); include([1,2]);
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1); % Free one constant
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("bknpower(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	set_par("bknpower(1).BreakE",10,0,8,15);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (bknpower, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obA_powerlaw_tbabs_gaussian_highecut() {
+	
+	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1))*tbabs(1)");
+	exclude(all_data); include([1,2]);
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1); % Free one constant
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (powerlaw, tbabs, gaussian, highecut)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obA_powerlaw_tbabs_gaussian_highecut_laor() {
+
+	exclude(all_data); include([1,2]);
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1); % Free one constant
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (powerlaw, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obB_bknpower_tbabs_gaussian_highecut() {
+
+	fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1))*tbabs(1)");
+	exclude(all_data); include([3,4]);
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("bknpower(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	set_par("bknpower(1).BreakE",10,0,8,15);
+	
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (bknpower, tbabs, gaussian, highecut)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obB_bknpower_tbabs_gaussian_highecut_laor() {
+
+	fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	
+	exclude(all_data); include([3,4]);
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	set_par("bknpower(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("bknpower(1).PhoIndx1",1.67325,0,1.2,1.8); % Sets value equal to PhoIndx2 after fitting.
+	set_par("bknpower(1).PhoIndx2",2.5,0,1.5,3);
+	set_par("bknpower(1).BreakE",10,0,8,15);
+	
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (bknpower, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obB_powerlaw_tbabs_gaussian_highecut() {
+
+	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1))*tbabs(1)");
+	exclude(all_data); include([3,4]);
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (powerlaw, tbabs, gaussian, highecut)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obB_powerlaw_tbabs_gaussian_highecut_laor() { %FAULTY; ran obA version of this, then evaluated this based of conf_loop parameters of obA.
+
+	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
+	
+	exclude(all_data); include([3,4]);
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("gaussian(1).norm",1e-3,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",6.3,0,6,7);
+	set_par("gaussian(1).Sigma",1e-3,0,0,1);
+	
+	set_par("powerlaw(1).PhoIndex",1.67325,0,1.2,1.8);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("highecut(1).cutoffE",20,0,10,70);
+	set_par("highecut(1).foldE",100,0,20,1000);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	tie("gaussian(1).LineE","laor(1).lineE");
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (powerlaw, tbabs, gaussian, highecut, laor)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obA_pexmon_tbabs_laor() {
+	exclude(all_data); include([1,2]);
+	fit_fun("constant(Isis_Active_Dataset)*(pexmon(1)+laor(1))*tbabs(1)");
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1);
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	set_par("pexmon(1).norm",1e-1,0,1e-5,1);
+	set_par("pexmon(1).PhoIndex",1.67325,0,1.2,2.5);
+	set_par("pexmon(1).rel_refl",1.5,0,1,10000);
+	set_par("pexmon(1).redshift",0.00771,1);
+	set_par("pexmon(1).abund",1,0,0,10);
+	tie("pexmon(1).abund","pexmon(1).Fe_abund");
+	set_par("pexmon(1).Incl",30,0,10,80);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (pexmon, tbabs, laor)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+}
+define obB_pexmon_tbabs_laor() {
+	exclude(all_data); include([3,4]);
+	fit_fun("constant(Isis_Active_Dataset)*(pexmon(1)+laor(1))*tbabs(1)");
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("laor(1).norm",1e-3,0,1e-5,1e-1);
+	
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	set_par("laor(1).Incl",30,1);
+	
+	set_par("pexmon(1).norm",1e-4,0,1e-5,1);
+	set_par("pexmon(1).PhoIndex",1.67325,0,1.2,2.5);
+	set_par("pexmon(1).rel_refl",1.5,0,1,10000);
+	set_par("pexmon(1).redshift",0.00771,1);
+	set_par("pexmon(1).abund",1,0,0,10);
+	tie("pexmon(1).abund","pexmon(1).Fe_abund");
+	set_par("pexmon(1).Incl",30,0,10,80);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (pexmon, tbabs, laor)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+}
+define obA_cutoffpl_pexmon_tbabs_laor() {
+	exclude(all_data); include([1,2]);
+	fit_fun("constant(Isis_Active_Dataset)*(cutoffpl(1)+pexmon(1)+laor(1))*tbabs(1)");
+	
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,0,0.9,1.1);
+	% set_par("constant(3).factor",1,1);
+	% set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("laor(1).norm",1e-3,0,0,1e-1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	set_par("pexmon(1).norm",1e-2,0,1e-5,1);
+	set_par("pexmon(1).PhoIndex",1.67325,0,1.2,2);
+	set_par("pexmon(1).rel_refl",-1,0,-10,0);
+	set_par("pexmon(1).redshift",0.00771,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).Incl",45,1);
+	
+	set_par("cutoffpl(1).norm",1e-3,0,1e-4,2);
+	set_par("cutoffpl(1).PhoIndex",1.67325,0,1.2,3);
+	set_par("cutoffpl(1).HighECut",20,0,10,500);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 90501523002 (pexmon, cutoffpl, tbabs, laor)");
+	xlog; ylog;
+	plot_unfold({[1,2]};res=2,power=3);
+	
+}
+define obB_gabs_cutoffpl_pexmon_tbabs_laor() {
+	% Instructed to add absorption to only this line
+	exclude(all_data); include([3,4]);
+	fit_fun("constant(Isis_Active_Dataset)*gabs(1)*((cutoffpl(1)+pexmon(1)+laor(1))*tbabs(1))");
+	
+	% set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.01,10);
+	set_par("laor(1).norm",1e-3,0,0,1e-1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Index",3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	set_par("pexmon(1).norm",1e-6,0,1e-7,1);
+	set_par("pexmon(1).PhoIndex",1.67325,0,1.2,2);
+	set_par("pexmon(1).rel_refl",-1,0,-10,0);
+	set_par("pexmon(1).redshift",0.00771,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).Incl",45,1);
+	
+	set_par("cutoffpl(1).norm",1e-3,0,1e-4,2);
+	set_par("cutoffpl(1).PhoIndex",1.67325,0,1.2,3);
+	set_par("cutoffpl(1).HighECut",20,0,10,500);
+	
+	set_par("gabs(1).LineE",6.4,0,6,7);
+	set_par("gabs(1).Sigma",0.01,1);
+	set_par("gabs(1).Strength",1,0,0,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 60160371002 (gabs,pexmon, cutoffpl, tbabs, laor)");
+	xlog; ylog;
+	plot_unfold({[3,4]};res=2,power=3);
+	
+}
+modeling_setup;
+
+define XMM_src_a_lc() { % a = 0840920301, b = 0840920201, must be run in directory where file is located.
+	
+	% Writes in data
+	(src_t_a,src_x_a,src_y_a) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/3556_0840920301_EPN_S001_ImagingEvts.ds[EVENTS]","time","x","y");
+	(src_gti_start_a,src_gti_stop_a) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/3556_0840920301_EPN_S001_ImagingEvts.ds[STDGTI04]","start","stop");
+	
+	% Center of defined circular region we want (SOURCE).
+	src_x0_a = 25965.312; 
+	src_y0_a = 25947.707;   
+	src_r_a = 600;     
+	
+	% Gets data only in circle
+	src_region_a = where((src_x_a - src_x0_a)^2 + (src_y_a - src_y0_a)^2 <= src_r_a^2);
+	src_tregion_a = src_t_a[src_region_a];
+	
+	% GTI Filtering
+	src_good_a = Integer_Type[0];
+	for (i = 0; i < length(src_gti_start_a); i++) {
+    	src_w_a = where(src_tregion_a >= src_gti_start_a[i] and src_tregion_a <= src_gti_stop_a[i]);
+    	if (length(src_w_a) > 0) {
+        src_good_a = [src_good_a, src_w_a];
+    	}
+	}
+	src_tfinal_a = src_tregion_a[src_good_a];
+	
+	
+	% Define bin width in seconds
+	bin_width_a = 100.0;
+	src_t_min_a = min(src_tfinal_a);
+	src_t_max_a = max(src_tfinal_a);
+	src_binedges_a = [src_t_min_a : src_t_max_a : bin_width_a];
+	
+	src_nbins_a = length(src_binedges_a) - 1;
+	src_counts_a = Integer_Type[src_nbins_a];
+	
+	src_finalcounts_a = Integer_Type[src_nbins_a];
+	for (k=0;k<src_nbins_a;k++) {
+		temp_lowedge = src_binedges_a[k];
+		temp_highedge = src_binedges_a[k+1];
+		
+		
+		temp_indices_in_bin = where(src_tfinal_a >= temp_lowedge and src_tfinal_a < temp_highedge);
+		src_finalcounts_a[k] = length(temp_indices_in_bin);
+	}
+	
+	src_finaltimes_a = Double_Type[src_nbins_a];
+
+	for (i = 0; i < src_nbins_a; i++) {
+    	src_finaltimes_a[i] = 0.5 * (src_binedges_a[i] + src_binedges_a[i+1]);
+	}
+
+	xlabel("Time (s)");
+	ylabel("Counts per 100s bin");
+	title("Light Curve (Circular Region), pn, 0840920301, source");
+	plot(src_finaltimes_a, src_finalcounts_a);
+
+}
+define XMM_bkg_a_lc() { % a = 0840920301, b = 0840920201, must be run in directory where file is located.
+	
+	% Writes in data
+	(bkg_t_a,bkg_x_a,bkg_y_a) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/3556_0840920301_EPN_S001_ImagingEvts.ds[EVENTS]","time","x","y");
+	(bkg_gti_start_a,bkg_gti_stop_a) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/3556_0840920301_EPN_S001_ImagingEvts.ds[STDGTI04]","start","stop");
+	
+	% Center of defined circular region we want (SOURCE).
+	bkg_x0_a = 27959.935; 
+	bkg_y0_a = 23726.127;   
+	bkg_r_a = 1200;     
+	
+	% Gets data only in circle
+	bkg_region_a = where((bkg_x_a - bkg_x0_a)^2 + (bkg_y_a - bkg_y0_a)^2 <= bkg_r_a^2);
+	bkg_tregion_a = bkg_t_a[bkg_region_a];
+	
+	% GTI Filtering
+	bkg_good_a = Integer_Type[0];
+	for (i = 0; i < length(bkg_gti_start_a); i++) {
+    	bkg_w_a = where(bkg_tregion_a >= bkg_gti_start_a[i] and bkg_tregion_a <= bkg_gti_stop_a[i]);
+    	if (length(bkg_w_a) > 0) {
+        bkg_good_a = [bkg_good_a, bkg_w_a];
+    	}
+	}
+	bkg_tfinal_a = bkg_tregion_a[bkg_good_a];
+	
+	
+	% Define bin width in seconds
+	bin_width_a = 100.0;
+	bkg_t_min_a = min(bkg_tfinal_a);
+	bkg_t_max_a = max(bkg_tfinal_a);
+	bkg_binedges_a = [bkg_t_min_a : bkg_t_max_a : bin_width_a];
+	
+	bkg_nbins_a = length(bkg_binedges_a) - 1;
+	bkg_counts_a = Integer_Type[bkg_nbins_a];
+	
+	bkg_finalcounts_a = Integer_Type[bkg_nbins_a];
+	for (k=0;k<bkg_nbins_a;k++) {
+		temp_lowedge = bkg_binedges_a[k];
+		temp_highedge = bkg_binedges_a[k+1];
+		
+		
+		temp_indices_in_bin = where(bkg_tfinal_a >= temp_lowedge and bkg_tfinal_a < temp_highedge);
+		bkg_finalcounts_a[k] = length(temp_indices_in_bin);
+	}
+	
+	bkg_finaltimes_a = Double_Type[bkg_nbins_a];
+
+	for (i = 0; i < bkg_nbins_a; i++) {
+    	bkg_finaltimes_a[i] = 0.5 * (bkg_binedges_a[i] + bkg_binedges_a[i+1]);
+	}
+
+	xlabel("Time (s)");
+	ylabel("Counts per 100s bin");
+	title("Light Curve (Circular Region), pn, 0840920301, background");
+	plot(bkg_finaltimes_a, bkg_finalcounts_a);
+
+}
+define XMM_src_b_lc() { % a = 0840920301, b = 0840920201, must be run in directory where file is located.
+	
+	% Writes in data
+	(src_t_b,src_x_b,src_y_b) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/3555_0840920201_EPN_S001_ImagingEvts.ds[EVENTS]","time","x","y");
+	(src_gti_start_b,src_gti_stop_b) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/3555_0840920201_EPN_S001_ImagingEvts.ds[STDGTI04]","start","stop");
+	
+	% Center of defined circular region we want (SOURCE).
+	src_x0_b = 26638.424; 
+	src_y0_b = 27899.707;   
+	src_r_b = 600;     
+	
+	% Gets data only in circle
+	src_region_b = where((src_x_b - src_x0_b)^2 + (src_y_b - src_y0_b)^2 <= src_r_b^2);
+	src_tregion_b = src_t_b[src_region_b];
+	
+	% GTI Filtering
+	src_good_b = Integer_Type[0];
+	for (i = 0; i < length(src_gti_start_b); i++) {
+    	src_w_b = where(src_tregion_b >= src_gti_start_b[i] and src_tregion_b <= src_gti_stop_b[i]);
+    	if (length(src_w_b) > 0) {
+        src_good_b = [src_good_b, src_w_b];
+    	}
+	}
+	src_tfinal_b = src_tregion_b[src_good_b];
+	
+	
+	% Define bin width in seconds
+	bin_width_b = 100.0;
+	src_t_min_b = min(src_tfinal_b);
+	src_t_max_b = max(src_tfinal_b);
+	src_binedges_b = [src_t_min_b : src_t_max_b : bin_width_b];
+	
+	src_nbins_b = length(src_binedges_b) - 1;
+	src_counts_b = Integer_Type[src_nbins_b];
+	
+	src_finalcounts_b = Integer_Type[src_nbins_b];
+	for (k=0;k<src_nbins_b;k++) {
+		temp_lowedge = src_binedges_b[k];
+		temp_highedge = src_binedges_b[k+1];
+	
+		
+		temp_indices_in_bin = where(src_tfinal_b >= temp_lowedge and src_tfinal_b < temp_highedge);
+		src_finalcounts_b[k] = length(temp_indices_in_bin);
+	}
+	
+	src_finaltimes_b = Double_Type[src_nbins_b];
+
+	for (i = 0; i < src_nbins_b; i++) {
+    	src_finaltimes_b[i] = 0.5 * (src_binedges_b[i] + src_binedges_b[i+1]);
+	}
+
+	xlabel("Time (s)");
+	ylabel("Counts per 100s bin");
+	title("Light Curve (Circular Region), pn, 0840920201, source");
+	plot(src_finaltimes_b, src_finalcounts_b);
+}
+define XMM_bkg_b_lc() { % a = 0840920301, b = 0840920201, must be run in directory where file is located.
+	
+	% Writes in data
+	(bkg_t_b,bkg_x_b,bkg_y_b) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/3555_0840920201_EPN_S001_ImagingEvts.ds[EVENTS]","time","x","y");
+	(bkg_gti_start_b,bkg_gti_stop_b) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/3555_0840920201_EPN_S001_ImagingEvts.ds[STDGTI04]","start","stop");
+	
+	% Center of defined circular region we want (SOURCE).
+	bkg_x0_b = 28597.216; 
+	bkg_y0_b = 25582.586;   
+	bkg_r_b = 1200;     
+	
+	% Gets data only in circle
+	bkg_region_b = where((bkg_x_b - bkg_x0_b)^2 + (bkg_y_b - bkg_y0_b)^2 <= bkg_r_b^2);
+	bkg_tregion_b = bkg_t_b[bkg_region_b];
+	
+	% GTI Filtering
+	bkg_good_b = Integer_Type[0];
+	for (i = 0; i < length(bkg_gti_start_b); i++) {
+    	bkg_w_b = where(bkg_tregion_b >= bkg_gti_start_b[i] and bkg_tregion_b <= bkg_gti_stop_b[i]);
+    	if (length(bkg_w_b) > 0) {
+        bkg_good_b = [bkg_good_b, bkg_w_b];
+    	}
+	}
+	bkg_tfinal_b = bkg_tregion_b[bkg_good_b];
+	
+	
+	% Define bin width in seconds
+	bin_width_b = 100.0;
+	bkg_t_min_b = min(bkg_tfinal_b);
+	bkg_t_max_b = max(bkg_tfinal_b);
+	bkg_binedges_b = [bkg_t_min_b : bkg_t_max_b : bin_width_b];
+	
+	bkg_nbins_b = length(bkg_binedges_b) - 1;
+	bkg_counts_b = Integer_Type[bkg_nbins_b];
+	
+	bkg_finalcounts_b = Integer_Type[bkg_nbins_b];
+	for (k=0;k<bkg_nbins_b;k++) {
+		temp_lowedge = bkg_binedges_b[k];
+		temp_highedge = bkg_binedges_b[k+1];
+	
+		
+		temp_indices_in_bin = where(bkg_tfinal_b >= temp_lowedge and bkg_tfinal_b < temp_highedge);
+		bkg_finalcounts_b[k] = length(temp_indices_in_bin);
+	}
+	
+	bkg_finaltimes_b = Double_Type[bkg_nbins_b];
+
+	for (i = 0; i < bkg_nbins_b; i++) {
+    	bkg_finaltimes_b[i] = 0.5 * (bkg_binedges_b[i] + bkg_binedges_b[i+1]);
+	}
+
+	xlabel("Time (s)");
+	ylabel("Counts per 100s bin");
+	title("Light Curve (Circular Region), pn, 0840920201, source");
+	plot(bkg_finaltimes_b, bkg_finalcounts_b);
+}
+define save_XMM_src_a_lc() {
+	variable lc = struct{time,C_counts_per_bin};
+	lc.time = src_finaltimes_a;
+	lc.C_counts_per_bin = src_finalcounts_a;
+	fits_write_binary_table("XMM_src_a_lc.fits", "LIGHTCURVE", lc);
+}
+define save_XMM_bkg_a_lc() {
+	variable lc = struct{time,C_counts_per_bin};
+	lc.time = bkg_finaltimes_a;
+	lc.C_counts_per_bin = bkg_finalcounts_a;
+	fits_write_binary_table("XMM_bkg_a_lc.fits", "LIGHTCURVE", lc);
+}
+define save_XMM_src_b_lc() {
+	variable lc = struct{time,C_counts_per_bin};
+	lc.time = src_finaltimes_b;
+	lc.C_counts_per_bin = src_finalcounts_b;
+	fits_write_binary_table("XMM_src_b_lc.fits", "LIGHTCURVE", lc);
+}
+define save_XMM_bkg_b_lc() {
+	variable lc = struct{time,C_counts_per_bin};
+	lc.time = bkg_finaltimes_b;
+	lc.C_counts_per_bin = bkg_finalcounts_b;
+	fits_write_binary_table("XMM_bkg_b_lc.fits", "LIGHTCURVE", lc);
+}
+define XMM_lc_a() {
+	delete_data(all_data);
+	(src_a_t,src_a_c) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/XMM_src_a_lc.fits","time", "C_counts_per_bin");
+	(bkg_a_t,bkg_a_c) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/XMM_bkg_a_lc.fits","time", "C_counts_per_bin");
+	title("Source and Background, XMM-Newton, pn, 0830920301");
+	plotxy(src_a_t,src_a_c; dcol=12, yrange={0,1500});
+	plotxy(bkg_a_t,bkg_a_c; dcol=3, oplt=1);
+}
+define XMM_lc_b() {
+	delete_data(all_data);
+	(src_b_t,src_b_c) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/XMM_src_b_lc.fits","time", "C_counts_per_bin");
+	(bkg_b_t,bkg_b_c) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/XMM_bkg_b_lc.fits","time", "C_counts_per_bin");
+	title("Source and Background, XMM-Newton, pn, 0830920201");
+	plotxy(src_b_t,src_b_c; dcol=12, yrange={0,1500});
+	plotxy(bkg_b_t,bkg_b_c; dcol=3, oplt=1);
+}
+variable A,B,A_rmf,A_arf,B_rmf,B_arf;
+variable dA,dB,dA_kev_lo,dA_kev_hi,dB_kev_lo,dB_kev_hi,dA_counts_kev;
+variable dB_counts_kev,dA_cs,dB_cs,dA_idx1,dA_idx2,dB_idx1,dB_idx2;
+define XMM_counts_bin_splitting() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.fits"); % ADJUST
+	B = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.fits"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.rmf");
+	A_arf = load_arf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.arf");
+	B_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.rmf");
+	B_arf = load_arf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.arf");
+	assign_rmf(A_rmf,1);
+	assign_arf(A_arf,1);
+	assign_rmf(B_rmf,2);
+	assign_arf(B_arf,2);
+	dA = get_data_counts(1);
+	dB = get_data_counts(2);
+	(dA_kev_lo,dA_kev_hi) = _A(dA.bin_lo,dA.bin_hi); % Inverts values to convert from photon wavelength to energy.
+	(dB_kev_lo,dB_kev_hi) = _A(dB.bin_lo,dB.bin_hi);
+	dA_counts_kev = reverse(dA.value); % d.value here returns the number of the bin, not the value of energy.
+	dB_counts_kev = reverse(dB.value);
+	dA_cs = cumsum(dA_counts_kev)/sum(dA_counts_kev);
+	dB_cs = cumsum(dB_counts_kev)/sum(dB_counts_kev);
+	dA_idx1 = wherefirst(dA_cs >= 0.33);
+	dA_idx2 = wherefirst(dA_cs >= 0.66);
+	dB_idx1 = wherefirst(dB_cs >= 0.33);
+	dB_idx2 = wherefirst(dB_cs >= 0.66);
+	vmessage("First increment A (Channel Number):");
+	print(dA_idx1);
+	vmessage("Second increment A (Channel Number):");
+	print(dA_idx2);
+	vmessage("First increment B (Channel Number):");
+	print(dB_idx1);
+	vmessage("Second increment B (Channel Number):");
+	print(dB_idx2);
+	vmessage("First increment A (keV):");
+	print((dA_kev_lo[dA_idx1]+dA_kev_hi[dA_idx1])/2);
+	vmessage("Second increment A (keV):");
+	print((dA_kev_lo[dA_idx2]+dA_kev_hi[dA_idx2])/2);
+	vmessage("First increment B (keV):");
+	print((dB_kev_lo[dB_idx1]+dB_kev_hi[dB_idx1])/2);
+	vmessage("Second increment B (keV):");
+	print((dB_kev_lo[dB_idx2]+dB_kev_hi[dB_idx2])/2);
+	% The relation between energy value and PI channel is as follows:
+	% Energy = 1000 * PI
+	vmessage(" First increment A (PI Channel)");
+	print(((dA_kev_lo[dA_idx1]+dA_kev_hi[dA_idx1]) / 2) * 1000);
+	vmessage(" Second increment A (PI Channel)");
+	print(((dA_kev_lo[dA_idx2]+dA_kev_hi[dA_idx2]) / 2) * 1000);
+	vmessage(" First increment B (PI Channel)");
+	print(((dB_kev_lo[dB_idx1]+dB_kev_hi[dB_idx1]) / 2) * 1000);
+	vmessage(" Second increment B (PI Channel)");
+	print(((dB_kev_lo[dB_idx2]+dB_kev_hi[dB_idx2]) / 2) * 1000);
+	
+	vmessage("See XMM_counts_bin_splitting function in project_code.isis for derivations of these values");
+}
+variable bin_size = 100;
+variable A_cxy,A_cxz,A_cyz,B_cxy,B_cxz,B_cyz;
+define XMM_s_c() { 
+
+	(xta,xra,xra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/A_400_1746.lc", "time", "rate", "error");
+	(xtb,xrb,xrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/B_400_1746.lc", "time", "rate", "error");
+	xa = sitar_rebin_rate(xta,bin_size,xra,xra_e;delgap);
+	xb = sitar_rebin_rate(xtb,bin_size,xrb,xrb_e;delgap);
+	
+	(yta,yra,yra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/A_1747_3378.lc", "time", "rate", "error");
+	(ytb,yrb,yrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/B_1747_3378.lc", "time", "rate", "error");
+	ya = sitar_rebin_rate(yta,bin_size,yra,yra_e;delgap);
+	yb = sitar_rebin_rate(ytb,bin_size,yrb,yrb_e;delgap);
+	
+	(zta,zra,zra_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/A_3379_10000.lc", "time", "rate", "error");
+	(ztb,zrb,zrb_e) = fits_read_col("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/B_3379_10000.lc", "time", "rate", "error");
+	za = sitar_rebin_rate(zta,bin_size,zra,zra_e;delgap);
+	zb = sitar_rebin_rate(ztb,bin_size,zrb,zrb_e;delgap);
+	
+	A_cxy = struct{rate,err,time};
+	A_cxy.rate = (xa.rate-ya.rate)/(xa.rate+ya.rate);
+	A_cxy.err = 2/(xa.rate+ya.rate)^2*(ya.rate^2*xa.err^2+xa.rate^2*ya.err^2)^1/2;
+	A_cxy.time = ((xa.bin_lo+xa.bin_hi)/2 + (ya.bin_lo+ya.bin_hi)/2) / 2;
+	
+	A_cxz = struct{rate,err,time};
+	A_cxz.rate = (xa.rate-za.rate)/(xa.rate+za.rate);
+	A_cxz.err = 2/(xa.rate+za.rate)^2*(za.rate^2*xa.err^2+xa.rate^2*za.err^2)^1/2;
+	A_cxz.time = ((xa.bin_lo+xa.bin_hi)/2 + (za.bin_lo+za.bin_hi)/2) / 2;
+	
+	A_cyz = struct{rate,err,time};
+	A_cyz.rate = (ya.rate-za.rate)/(ya.rate+za.rate);
+	A_cyz.err = 2/(ya.rate+za.rate)^2*(za.rate^2*ya.err^2+ya.rate^2*za.err^2)^1/2;
+	A_cyz.time = ((ya.bin_lo+ya.bin_hi)/2 + (za.bin_lo+za.bin_hi)/2) / 2;
+	
+	B_cxy = struct{rate,err,time};
+	B_cxy.rate = (xb.rate-yb.rate)/(xb.rate+yb.rate);
+	B_cxy.err = 2/(xb.rate+yb.rate)^2*(yb.rate^2*xb.err^2+xb.rate^2*yb.err^2)^1/2;
+	B_cxy.time = ((xb.bin_lo+xb.bin_hi)/2 + (yb.bin_lo+yb.bin_hi)/2) / 2;
+	
+	B_cxz = struct{rate,err,time};
+	B_cxz.rate = (xb.rate-zb.rate)/(xb.rate+zb.rate);
+	B_cxz.err = 2/(xb.rate+zb.rate)^2*(zb.rate^2*xb.err^2+xb.rate^2*zb.err^2)^1/2;
+	B_cxz.time = ((xb.bin_lo+xb.bin_hi)/2 + (zb.bin_lo+zb.bin_hi)/2) / 2;
+	
+	B_cyz = struct{rate,err,time};
+	B_cyz.rate = (yb.rate-zb.rate)/(yb.rate+zb.rate);
+	B_cyz.err = 2/(yb.rate+zb.rate)^2*(zb.rate^2*yb.err^2+yb.rate^2*zb.err^2)^1/2;
+	B_cyz.time = ((yb.bin_lo+yb.bin_hi)/2 + (zb.bin_lo+zb.bin_hi)/2) / 2;
+	
+	% Cleaning indices
+	gAtemp = wherenot(isnan(A_cxy.rate) or isinf(A_cxy.rate) or isnan(A_cxy.err) or isinf(A_cxy.err) or
+isnan(A_cyz.rate) or isinf(A_cyz.rate) or isnan(A_cyz.err) or isinf(A_cyz.err) or isnan(A_cxz.rate) or isinf(A_cxz.rate) or isnan(A_cxz.err) or isinf(A_cxz.err));
+
+	gA_cxy = struct{rate,err,time};
+	gA_cxy.rate = A_cxy.rate[gAtemp];
+	gA_cxy.err = A_cxy.err[gAtemp];
+	gA_cxy.time = A_cxy.time[gAtemp];
+	
+	gA_cxz = struct{rate,err,time};
+	gA_cxz.rate = A_cxz.rate[gAtemp];
+	gA_cxz.err = A_cxz.err[gAtemp];
+	gA_cxz.time = A_cxz.time[gAtemp];
+	
+	gA_cyz = struct{rate,err,time};
+	gA_cyz.rate = A_cyz.rate[gAtemp];
+	gA_cyz.err = A_cyz.err[gAtemp];
+	gA_cyz.time = A_cyz.time[gAtemp];
+	
+	gBtemp = wherenot(isnan(B_cxy.rate) or isinf(B_cxy.rate) or isnan(B_cxy.err) or isinf(B_cxy.err) or
+isnan(B_cyz.rate) or isinf(B_cyz.rate) or isnan(B_cyz.err) or isinf(B_cyz.err) or isnan(B_cxz.rate) or isinf(B_cxz.rate) or isnan(B_cxz.err) or isinf(B_cxz.err));
+
+	gB_cxy = struct{rate,err,time};
+	gB_cxy.rate = B_cxy.rate[gBtemp];
+	gB_cxy.err = B_cxy.err[gBtemp];
+	gB_cxy.time = B_cxy.time[gBtemp];
+	
+	gB_cxz = struct{rate,err,time};
+	gB_cxz.rate = B_cxz.rate[gBtemp];
+	gB_cxz.err = B_cxz.err[gBtemp];
+	gB_cxz.time = B_cxz.time[gBtemp];
+	
+	gB_cyz = struct{rate,err,time};
+	gB_cyz.rate = B_cyz.rate[gBtemp];
+	gB_cyz.err = B_cyz.err[gBtemp];
+	gB_cyz.time = B_cyz.time[gBtemp];
+	
+	% Intensities
+
+	gxa = struct{rate,time,err};
+	gxa.rate = xa.rate[gAtemp];
+	gxa.time = (xa.bin_lo[gAtemp] + xa.bin_hi[gAtemp]) / 2;
+	gxa.err = xa.err[gAtemp];
+	
+	gya = struct{rate,time,err};
+	gya.rate = ya.rate[gAtemp];
+	gya.time = (ya.bin_lo[gAtemp] + ya.bin_hi[gAtemp]) / 2;
+	gya.err = ya.err[gAtemp];
+	
+	gza = struct{rate,time,err};
+	gza.rate = za.rate[gAtemp];
+	gza.time = (za.bin_lo[gAtemp] + za.bin_hi[gAtemp]) / 2;
+	gza.err = za.err[gAtemp];
+	
+	gxb = struct{rate,time,err};
+	gxb.rate = xb.rate[gBtemp];
+	gxb.time = (xb.bin_lo[gBtemp] + xb.bin_hi[gBtemp]) / 2;
+	gxb.err = xb.err[gBtemp];
+	
+	gyb = struct{rate,time,err};
+	gyb.rate = yb.rate[gBtemp];
+	gyb.time = (yb.bin_lo[gBtemp] + yb.bin_hi[gBtemp]) / 2;
+	gyb.err = yb.err[gBtemp];
+	
+	gzb = struct{rate,time,err};
+	gzb.rate = zb.rate[gBtemp];
+	gzb.time = (zb.bin_lo[gBtemp] + zb.bin_hi[gBtemp]) / 2;
+	gzb.err = zb.err[gBtemp];
+	
+	A_intensity = struct{rate, err};
+	A_intensity.rate = gxa.rate+gya.rate+gza.rate;
+	A_intensity.err = sqrt(gxa.err^2+gya.err^2+gza.err^2);
+	B_intensity = struct{rate, err};
+	B_intensity.rate = gxb.rate+gyb.rate+gzb.rate;
+	B_intensity.err = sqrt(gxb.err^2+gyb.err^2+gzb.err^2);
+	
+}
+define figure32() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("cxy"); ylabel("cyz"); title("XMM Colors xy vs yz from both observations");
+	plotxy(gA_cxy.rate,gA_cxy.err,gA_cxy.err,gA_cyz.rate,gA_cyz.err,gA_cyz.err; dcol=4,xrange={-0.2,0.2},yrange={-0.4,0.2});
+	plotxy(gB_cxy.rate,gB_cxy.err,gB_cxy.err,gB_cyz.rate,gB_cyz.err,gB_cyz.err; dcol=8,oplt=1);
+}
+define figure33() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("cxy"); ylabel("cxz"); title("XMM Colors xy vs xz from both observations");
+	plotxy(gA_cxy.rate,gA_cxy.err,gA_cxy.err,gA_cxz.rate,gA_cxz.err,gA_cxz.err; dcol=4,xrange={-0.2,0.2},yrange={-0.5,0.2});
+	plotxy(gB_cxy.rate,gB_cxy.err,gB_cxy.err,gB_cxz.rate,gB_cxz.err,gB_cxz.err; dcol=8,oplt=1);
+}
+define figure34() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("cyz"); ylabel("cxz"); title("XMM Colors yz vs xz from both observations");
+	plotxy(gA_cyz.rate,gA_cyz.err,gA_cyz.err,gA_cxz.rate,gA_cxz.err,gA_cxz.err; dcol=4,xrange={-0.4,0.2},yrange={-0.5,0.2});
+	plotxy(gB_cyz.rate,gB_cyz.err,gB_cyz.err,gB_cxz.rate,gB_cxz.err,gB_cxz.err; dcol=8,oplt=1);
+}
+define figure35() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cxy"); title("Intensity (xyz) vs. Colors of xy for both XMM observations");
+	plotxy(A_intensity.rate,A_intensity.err,A_intensity.err,gA_cxy.rate,gA_cxy.err,gA_cxy.err; dcol=4,xrange={5,30},yrange={-0.2,0.2});
+	plotxy(B_intensity.rate,B_intensity.err,B_intensity.err,gB_cxy.rate,gB_cxy.err,gB_cxy.err; dcol=8,oplt=1);
+	
+}
+define figure36() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cyz"); title("Intensity (xyz) vs. Colors of yz for both XMM observations");
+	plotxy(A_intensity.rate,A_intensity.err,A_intensity.err,gA_cyz.rate,gA_cyz.err,gA_cyz.err; dcol=4,xrange={5,30},yrange={-0.4,0.2});
+	plotxy(B_intensity.rate,B_intensity.err,B_intensity.err,gB_cyz.rate,gB_cyz.err,gB_cyz.err; dcol=8,oplt=1);
+	
+}
+define figure37() {
+	XMM_s_c;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cxz"); title("Intensity (xyz) vs. Colors of xz for both XMM observations");
+	plotxy(A_intensity.rate,A_intensity.err,A_intensity.err,gA_cxz.rate,gA_cxz.err,gA_cxz.err; dcol=4,xrange={5,30},yrange={-0.3,0.2});
+	plotxy(B_intensity.rate,B_intensity.err,B_intensity.err,gB_cxz.rate,gB_cxz.err,gB_cxz.err; dcol=8,oplt=1);
+	
+}
+define sort_array_ascending(arr) {
+    variable n = length(arr);
+    variable sorted = arr[*];  % make a copy to avoid modifying original
+
+    variable i, j, min_idx, temp;
+
+    for (i = 0; i < n - 1; i++) {
+        min_idx = i;
+        for (j = i + 1; j < n; j++) {
+            if (sorted[j] < sorted[min_idx]) {
+                min_idx = j;
+            }
+        }
+        % Swap elements
+        if (min_idx != i) {
+            temp = sorted[i];
+            sorted[i] = sorted[min_idx];
+            sorted[min_idx] = temp;
+        }
+    }
+
+    return sorted;
+}
+define extrema_finding() {
+	% Intensity (xyz) vs. Colors of xz, figure35, focusing on A (301)
+	% First region: cxz from 0.0357 to 0.134, I from 7.19 to 13.5
+	% Second region: cxz from -0.143 to -0.0336 , I from 7.08 to 13.8
+	XMM_s_c;
+	r_one = struct{index,index_time};
+	r_one.index = where(gA_cxy.rate >= 0.0357 & gA_cxy.rate <= 0.134 & A_intensity.rate >= 7.19 & A_intensity.rate <= 13.5);
+	r_one.index_time = gA_cxy.time[r_one.index];
+	r_one_sorted_times = sort_array_ascending(r_one.index_time);
+	
+	r_two = struct{index,index_time};
+	r_two.index = where(gA_cxy.rate >= -0.143 & gA_cxy.rate <= -0.0336 & A_intensity.rate >= 7.08 & A_intensity.rate <= 13.8);
+	r_two.index_time = gA_cxy.time[r_two.index];
+	r_two_sorted_times = sort_array_ascending(r_two.index_time);
+}
+define figure38() {
+	XMM_s_c;
+	extrema_finding;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cxy"); title("Intensity (xyz) vs. Colors of xz for both XMM observations, two extrema");
+	plotxy(A_intensity.rate[r_one.index],A_intensity.err[r_one.index],A_intensity.err[r_one.index],gA_cxy.rate[r_one.index],gA_cxy.err[r_one.index],gA_cxy.err[r_one.index]; dcol=4,xrange={5,30},yrange={-0.2,0.2});
+	 % plotxy(B_intensity.rate[r_one.index],B_intensity.err[r_one.index],B_intensity.err[r_one.index],gB_cxy.rate[r_one.index],gB_cxy.err[r_one.index],gB_cxy.err[r_one.index]; dcol=8,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	vmessage(" call r_one_sorted_times and r_two_sorted_times for GTIs");
+	vmessage(" save time intervals for extrema in current directory using save_extrema_finding");
+}
+define figure39() {
+	XMM_s_c;
+	extrema_finding;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cxy"); title("Intensity (xyz) vs. Colors of xz for both XMM observations, two extrema");
+	plotxy(A_intensity.rate[r_two.index],A_intensity.err[r_two.index],A_intensity.err[r_two.index],gA_cxy.rate[r_two.index],gA_cxy.err[r_two.index],gA_cxy.err[r_two.index]; dcol=4,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	 % plotxy(B_intensity.rate[r_two.index],B_intensity.err[r_two.index],B_intensity.err[r_two.index],gB_cxy.rate[r_two.index],gB_cxy.err[r_two.index],gB_cxy.err[r_two.index]; dcol=8,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	vmessage(" call r_one_sorted_times and r_two_sorted_times for GTIs");
+	vmessage(" save time intervals for extrema in current directory using save_extrema_finding");
+}
+define figure40() {
+	XMM_s_c;
+	extrema_finding;
+	connect_points(0);
+	xlabel("Intensity of Rates (xyz)"); ylabel("cxy"); title("Intensity (xyz) vs. Colors of xz for both XMM observations, two extrema");
+	plotxy(A_intensity.rate[r_one.index],A_intensity.err[r_one.index],A_intensity.err[r_one.index],gA_cxy.rate[r_one.index],gA_cxy.err[r_one.index],gA_cxy.err[r_one.index]; dcol=4,xrange={5,30},yrange={-0.2,0.2});
+	plotxy(A_intensity.rate[r_two.index],A_intensity.err[r_two.index],A_intensity.err[r_two.index],gA_cxy.rate[r_two.index],gA_cxy.err[r_two.index],gA_cxy.err[r_two.index]; dcol=4,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	 % plotxy(B_intensity.rate[r_one.index],B_intensity.err[r_one.index],B_intensity.err[r_one.index],gB_cxy.rate[r_one.index],gB_cxy.err[r_one.index],gB_cxy.err[r_one.index]; dcol=8,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	 % plotxy(B_intensity.rate[r_two.index],B_intensity.err[r_two.index],B_intensity.err[r_two.index],gB_cxy.rate[r_two.index],gB_cxy.err[r_two.index],gB_cxy.err[r_two.index]; dcol=8,xrange={5,30},yrange={-0.2,0.2}, oplt=1);
+	vmessage(" call r_one_sorted_times and r_two_sorted_times for GTIs");
+	vmessage(" save time intervals for extrema in current directory using save_extrema_finding");
+}
+variable n1,n2,r_one_save,r_two_save,l,m;
+define save_extrema_finding() {
+	extrema_finding;
+
+	% Allocate arrays for start/stop times
+	variable n1 = (length(r_one_sorted_times) / 2);
+	variable n2 = (length(r_two_sorted_times) / 2);
+
+	variable r_one_save = struct{START, STOP};
+	r_one_save.START = Double_Type[n1];
+	r_one_save.STOP = Double_Type[n1];
+
+	variable r_two_save = struct{START, STOP};
+	r_two_save.START = Double_Type[n2];
+	r_two_save.STOP = Double_Type[n2];
+
+	% Fill r_one_save arrays
+	variable l = 0;
+	while (l < n1) {
+		r_one_save.START[l] = r_one_sorted_times[2*l];
+		r_one_save.STOP[l]  = r_one_sorted_times[2*l + 1];
+		l++;
+	}
+
+	% Fill r_two_save arrays
+	m = 0;
+	while (m < n2) {
+		r_two_save.START[m] = r_two_sorted_times[2*m];
+		r_two_save.STOP[m]  = r_two_sorted_times[2*m + 1];
+		m++;
+	}
+
+	% Write GTI files
+	fits_write_binary_table("r_one_times.fits", "STDGTI", r_one_save);
+	fits_write_binary_table("r_two_times.fits", "STDGTI", r_two_save);
+}
+define XMM_load() { % Loads XMM-Newton pn data for observations 0840920301 and 0840920201
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.fits"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.rmf");
+	A_arf = load_arf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/src_spectra.arf");
+	assign_rmf(A_rmf,1);
+	assign_arf(A_arf,1);
+	B = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.fits"); % ADJUST
+	B_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.rmf");
+	B_arf = load_arf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn/src_spectra.arf");
+	assign_rmf(B_rmf,2);
+	assign_arf(B_arf,2);
+}
+define extrema_spectra() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/extrema_src_spectra.fits"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/extrema_src_spectra.rmf");
+	A_arf = load_arf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn/extrema_src_spectra.arf");
+	assign_rmf(A_rmf,1);
+	assign_arf(A_arf,1);
+	title("Spectra of two extrema, ObID 0840920301");
+	plot_data(1);
+}
+define XMM_regrouping1() { 
+	XMM_load;
+	group([1,2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=5);
+	notice_values([1,2],0.4,10.;unit="kev");
+	plot_data({1,2};scale={1,1},dcol={4,8});
+}
+define XMM_regrouping2() { 
+	XMM_load;
+	group([1,2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=100);
+	xlog; ylog;
+	notice_values([1,2],0.4,10.;unit="kev");
+	plot_unfold({1,2};scale={1,0.9},dcol={4,8});
+}
+define NuSTAR_load() { % Loads data into ISIS.
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	
+	% A1 - Data index 1; A2 - Data index 2...
+	A1 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/90501623002/event_cl2/nu90501623002_A_sr.pha"); % ADJUST
+	B1 = load_data("/man1/gisaac/NGC_2992/Extracted_Data/60160371002/event_cl2/nu60160371002_A_sr.pha"); % ADJUST
+}
+define NuSTAR_regrouping2() { 
+	NuSTAR_load;
+	notice_values([1,2],3,35;unit="kev");
+	plot_data({1,2};scale={1,0.9},dcol={4,8});
+}
+define XMM_regrouping3() { 
+	XMM_load;
+	group([1,2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=100);
+	notice_values([1,2],5,8;unit="kev");
+	plot_data({1,2};scale={1,0.9},dcol={4,8});
+}
+define XMM_A_tbabs_no_laor() {
+	XMM_load;
+	
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+	
+	% fit_fun("constant(Isis_Active_Dataset)*((tbabs(1)*(powerlaw(1)+pexmon(1)))+tbabs(2))");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(powerlaw(1)+pexmon(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.001,3);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-6,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 0840920301, tbabs_src, tbabs_galaxy, powerlaw, pexmon");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_A_tbabs_laor() {
+	XMM_load;
+	
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(powerlaw(1)+pexmon(1))+laor(1))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	% set_par("constant(2).factor",1,0,0.9,1.1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.001,3);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-6,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("laor(1).norm",1e-5,0,1e-6,1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Incl",45,1); % Has smaller bounds than pexmon; cannot be tied.
+	set_par("laor(1).Index",0.01,0,1e-3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 0840920301, tbabs_src, tbabs_galaxy, powerlaw, pexmon, laor");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_B_tbabs_no_laor() {
+	XMM_load;
+	
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(powerlaw(1)+pexmon(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.001,3);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-6,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 0840920201, tbabs_src, tbabs_galaxy, powerlaw, pexmon");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+define XMM_B_tbabs_laor() {
+	XMM_load;
+	
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(powerlaw(1)+pexmon(1))+laor(1))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0.001,3);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-6,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("laor(1).norm",1e-4,0,1e-6,1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Incl",45,1); % Has smaller bounds than pexmon; cannot be tied.
+	set_par("laor(1).Index",0.01,0,1e-3,1);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	renorm_counts;
+	fit_counts;
+	title("Model of 0840920201, tbabs_src, tbabs_galaxy, powerlaw, pexmon, laor");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+define XMM_A_test_no_laor() {
+	XMM_load;
+	
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(TBpcf(2)*powerlaw(1)+pexmon(1)+gaussian(1)+bbody(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0,100);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-10,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1000,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("TBpcf(2).nH",1.08,0,0,1000);
+	set_par("TBpcf(2).pcf",0.5,0,0,1);
+	set_par("gaussian(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",1.74,0,1.5,1.8);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	set_par("bbody(1).norm",1e-2,0,1e-10,1e-1);
+	set_par("bbody(1).kT",0.5,0,1e-4,200);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model of 0840920301, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_A_test_laor() {
+	XMM_load;
+	
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(TBpcf(2)*powerlaw(1)+pexmon(1)+gaussian(1)+bbody(1)+laor(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0,100);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-10,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1000,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("TBpcf(2).nH",1.08,0,0,1000);
+	set_par("TBpcf(2).pcf",0.5,0,0,1);
+	set_par("gaussian(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",1.74,0,1.5,1.8);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	set_par("bbody(1).norm",1e-2,0,1e-12,1e-1);
+	set_par("bbody(1).kT",0.5,0,1e-4,200);
+	
+	set_par("laor(1).norm",1e-5,0,1e-8,1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Incl",45,1); % Has smaller bounds than pexmon; cannot be tied.
+	set_par("laor(1).Index",5,0,2,10);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model of 0840920301, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody, laor");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_B_test_no_laor() {
+	XMM_load;
+	
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(TBpcf(2)*powerlaw(1)+pexmon(1)+gaussian(1)+bbody(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0,100);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-10,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1000,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("TBpcf(2).nH",1.08,0,0,1000);
+	set_par("TBpcf(2).pcf",0.5,0,0,1);
+	set_par("gaussian(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",1.74,0,1.5,1.8);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	set_par("bbody(1).norm",1e-2,0,1e-10,1e-1);
+	set_par("bbody(1).kT",0.5,0,1e-4,200);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model of 0840920201, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+define XMM_B_test_laor() {
+	XMM_load;
+	
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+	fit_fun("constant(Isis_Active_Dataset)*((tbabs(1))*(tbabs(2))*(TBpcf(2)*powerlaw(1)+pexmon(1)+gaussian(1)+bbody(1)+laor(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	set_par("tbabs(1).nH",0.0521,0,0,100);
+	set_par("powerlaw(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1.6,2.0);
+	set_par("pexmon(1).rel_refl",-1,1);
+	set_par("pexmon(1).Incl",45,1);
+	set_par("pexmon(1).norm",1e-5,0,1e-10,1);
+	set_par("pexmon(1).Fe_abund",1,1);
+	set_par("pexmon(1).redshift",0.0077,1);
+	set_par("pexmon(1).foldE",1000,1);
+	set_par("pexmon(1).PhoIndex",1.2,1);
+	set_par("pexmon(1).abund",1,1);
+	set_par("tbabs(2).nH",0.4,1);
+	set_par("TBpcf(2).nH",1.08,0,0,1000);
+	set_par("TBpcf(2).pcf",0.5,0,0,1);
+	set_par("gaussian(1).norm",1e-2,0,1e-5,1e-1);
+	set_par("gaussian(1).LineE",1.74,0,1.5,1.8);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	set_par("bbody(1).norm",1e-2,0,1e-12,1e-1);
+	set_par("bbody(1).kT",0.5,0,1e-4,200);
+	
+	set_par("laor(1).norm",1e-5,0,1e-8,1);
+	set_par("laor(1).lineE",6.4,0,6,7);
+	set_par("laor(1).Incl",45,1); % Has smaller bounds than pexmon; cannot be tied.
+	set_par("laor(1).Index",5,0,2,10);
+	set_par("laor(1).Rin_G",1.235,1);
+	set_par("laor(1).Rout_G",400,1);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model of 0840920201, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody, laor");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+define XMM_A_adj1() {
+	XMM_load;
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*(TBpcf(1)*(powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% Heterogenous interstellar dust obstruction
+	set_par("TBpcf(1).nH",1,0,0,100); % This range is a guess
+	set_par("TBpcf(1).pcf",0.5,0,0,1); % We don't know the fraction
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.5,0,0.4,0.9);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	set_par("pexmon(1).PhoIndex",1.5,0,1.1,2.5);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model 0840920301");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_B_adj1() {
+	XMM_load;
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*(TBpcf(1)*(powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% Heterogenous interstellar dust obstruction
+	set_par("TBpcf(1).nH",1,0,0,100); % This range is a guess
+	set_par("TBpcf(1).pcf",0.5,0,0,1); % We don't know the fraction
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.5,0,0.4,0.9);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	set_par("pexmon(1).PhoIndex",1.5,0,1.1,2.5);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model 0840920201");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+define XMM_A_adj2() {
+	XMM_load;
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*((powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.5,0,0.4,0.9);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	set_par("pexmon(1).PhoIndex",1.5,0,1.1,2.5);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model 0840920301");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}
+define XMM_B_adj2() {
+	XMM_load;
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*((powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.5,0,0.4,0.9);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	set_par("pexmon(1).PhoIndex",1.5,0,1.1,2.5);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model 0840920201");
+	xlog; ylog;
+	plot_unfold({[2]};res=2,power=3);
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+define XMM_A_adj3() {
+	XMM_load;
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*(TBpcf(1)*(powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% Heterogenous interstellar dust obstruction
+	set_par("TBpcf(1).nH",1,0,0,100); % This range is a guess
+	set_par("TBpcf(1).pcf",0.5,0,0,1); % We don't know the fraction
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.8,1);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	
+	variable run=0.85;
+	variable y;
+	for (y=0; y < 18; y++) {
+	set_par("TBpcf(2).pcf",run,1);
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1;save, prefix=sprintf("%.2f",run) + ".par", nice=19);
+	save_par(sprintf("%.2f",run) + "_lastmodel.save");
+	run = run - 0.05;
+	}
+}
+define XMM_B_adj3() {
+	XMM_load;
+	group([2];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([2],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*(TBpcf(1)*(powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([2]);
+	
+	set_par("constant(2).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% Heterogenous interstellar dust obstruction
+	set_par("TBpcf(1).nH",1,0,0,100); % This range is a guess
+	set_par("TBpcf(1).pcf",0.5,0,0,1); % We don't know the fraction
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.8,1);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	
+	variable run=0.85;
+	variable y;
+	for (y=0; y < 18; y++) {
+	set_par("TBpcf(2).pcf",run,1);
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1;save, prefix=sprintf("%.2f",run) + ".par", nice=19);
+	save_par(sprintf("%.2f",run) + "_lastmodel.save");
+	run = run - 0.05;
+	}
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% RGS Data Plotting (all first-order due to resolution constraints)
+variable xrangeadj = {1.5,2};
+define RGS_r1_301() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R1S007SRSPEC1001.FIT"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r1_o1_rmf.fits");
+	assign_rmf(1,1);
+		group([1];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([1],0.55,2.5;unit="kev");
+	rebin_data(1,50);
+	connect_points(0);
+	xlog; ylog;
+	title("RGS1 (R1), 0840920301, first order");
+	plot_unfold({[1]}; decol=8, xrange=xrangeadj, dsym=0, power=3);
+}
+define RGS_r2_301() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R2S009SRSPEC1001.FIT"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r2_o1_rmf.fits");
+	assign_rmf(1,1);
+		group([1];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([1],0.55,2.5;unit="kev");
+	rebin_data(1,50);
+	connect_points(0);
+	xlog; ylog;
+	title("RGS1 (R2), 0840920301, first order");
+	plot_unfold({[1]}; decol=8, xrange=xrangeadj, dsym=0, power=3, oplt=1);
+}
+define RGS_r1_201() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R1S007SRSPEC1001.FIT"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r1_o1_rmf.fits");
+	assign_rmf(1,1);
+		group([1];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([1],0.55,2.5;unit="kev");
+	rebin_data(1,50);
+	connect_points(0);
+	xlog; ylog;
+	title("RGS1 (R1), 0840920201, first order");
+	plot_unfold({[1]}; decol=8, xrange=xrangeadj, dsym=0, power=3);
+}
+define RGS_r2_201() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R2S009SRSPEC1001.FIT"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r2_o1_rmf.fits");
+	assign_rmf(1,1);
+		group([1];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([1],0.55,2.5;unit="kev");
+	rebin_data(1,50);
+	connect_points(0);
+	xlog; ylog;
+	title("RGS1 (R2), 0840920201, first order");
+	plot_unfold({[1]}; decol=8, xrange=xrangeadj, dsym=0, power=3);
+}
+variable B,B_rmf,C,C_rmf,D,D_rmf,A_bkg,A_bkg_rmf;
+define allplots() {
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	
+	%SRC
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R1S007SRSPEC1001.FIT"); % ADJUST
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r1_o1_rmf.fits");
+	assign_rmf(1,1);
+	B = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R2S009SRSPEC1001.FIT"); % ADJUST
+	B_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r2_o1_rmf.fits");
+	assign_rmf(2,2);
+	C = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R1S007SRSPEC1001.FIT"); % ADJUST
+	C_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r1_o1_rmf.fits");
+	assign_rmf(3,3);
+	D = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R2S009SRSPEC1001.FIT"); % ADJUST
+	D_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r2_o1_rmf.fits");
+	assign_rmf(4,4);
+	group([1];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([1],0.55,2.5;unit="kev");
+	group([2];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([2],0.55,2.5;unit="kev");
+	group([3];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([3],0.55,2.5;unit="kev");
+	group([4];min_chan=[1:2695],bounds=[0.55,0.75,0.95,1.05,1.25,1.45,1.65,1.85,2.05,2.25,2.5],unit="kev",min_counts=20);
+	notice_values([4],0.55,2.5;unit="kev");
+	rebin_data(1,50);
+	rebin_data(2,50);
+	rebin_data(3,50);
+	rebin_data(4,50);
+	
+	connect_points(0);
+	xlin; ylog;
+	plot_unfold({1,2,3,4}; dcol={2,17,4,5}, decol={0,0,0,0}, dsym={0,0,0,0}, power=3, scale={1,1.5,2,2.5}, xrange={1.5,1.8}); % red = A (301, R1), green = B (301,R2), blue = C (201, R1), cyan = D (301,R2)
+	
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Now, need to model emission lines:
+% - A: 0.514 keV (R1 for 301 and 201): Ni Ka
+% - A: 0.557 keV (R1 for 301 and 201): O VII Triplet
+% - B: 0.640 keV (all observations; very quiet): 0 VIII Lya
+% - B: 0.730 keV (all observations; rather disparate: Fe XVII (?)
+% - C: 1.740 keV (R2 for 301 and 201): Si Ka
+
+define load_rebinned_RGS_XMM(rebin) { % Loads XMM-Newton RGS1 and RGS2 data (first order) for observations 0840920301 and 0840920201.
+	delete_data(all_data);
+	delete_rmf([1,2,3,4]);
+	delete_arf([1,2,3,4]);
+	Remove_Spectrum_Gaps=1;
+	
+	A = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R1S007SRSPEC1001.FIT"); % R1 301
+	A_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r1_o1_rmf.fits");
+	assign_rmf(1,1);
+	B = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/P0840920301R2S009SRSPEC1001.FIT"); % R2 301
+	B_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS/r2_o1_rmf.fits");
+	assign_rmf(2,2);
+	C = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R1S007SRSPEC1001.FIT"); % R1 201
+	C_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r1_o1_rmf.fits");
+	assign_rmf(3,3);
+	D = load_data("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/P0840920201R2S009SRSPEC1001.FIT"); % R2 201
+	D_rmf = load_rmf("/man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS/r2_o1_rmf.fits");
+	assign_rmf(4,4);
+	group([1];min_chan=[10],unit="kev",min_counts=20);
+	group([2];min_chan=[10],unit="kev",min_counts=20);
+	group([3];min_chan=[10],unit="kev",min_counts=20);
+	group([4];min_chan=[10],unit="kev",min_counts=20);
+	rebin_data(1,rebin);
+	rebin_data(2,rebin);
+	rebin_data(3,rebin);
+	rebin_data(4,rebin);
+	connect_points(0);
+	xlin; ylog;
+}
+
+define XMM_fluorescence_A(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1)+gaussian(2))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - A: 0.514 keV (R1 for 301 and 201): Ni Ka
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",0.514,0,0.5,0.52);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	% - A: 0.557 keV (R1 for 301 and 201): O VII Triplet
+	set_par("gaussian(2).norm",1e-1,0,0,1);
+	set_par("gaussian(2).LineE",0.557,0,0.55,0.565);
+	set_par("gaussian(2).Sigma",1e-3,1);
+	
+	variable min=0.45;
+	variable max=0.6;
+	exclude(all_data); include([1,3]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],min,max;unit="kev");
+	notice_values([2],min,max;unit="kev");
+	notice_values([3],min,max;unit="kev");
+	notice_values([4],min,max;unit="kev");
+	fit_counts;
+	renorm_counts;
+	plot_unfold({1,3};res=2,power=3,dcol={8,17},mcol={12},dsym={0,0});
+}
+define XMM_fluorescence_B(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1)+gaussian(2))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - B: 0.640 keV (all observations; very quiet): 0 VIII Lya
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",0.65,0,0.63,0.66);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	% - B: 0.730 keV (all observations; rather disparate: Fe XVII (?)
+	set_par("gaussian(2).norm",1e-1,0,0,1);
+	set_par("gaussian(2).LineE",0.72,0,0.7,0.73);
+	set_par("gaussian(2).Sigma",1e-3,1);
+	
+	exclude(all_data); include([1,2,3,4]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],0.6,0.75;unit="kev");
+	notice_values([2],0.6,0.75;unit="kev");
+	notice_values([3],0.6,0.75;unit="kev");
+	notice_values([4],0.6,0.75;unit="kev");
+	fit_counts;
+	renorm_counts;
+	plot_unfold({1,2,3,4};res=2,power=3,dcol={8,4,17,18},mcol={12},dsym={0,0,0,0});
+}
+define XMM_fluorescence_C(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(2).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("constant(4).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - C: 2.07 keV (R2 for 301 and 201): Si XIV ?
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",2.07,0,2.06,2.08);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	variable min=2.0;
+	variable max=2.15;
+	exclude(all_data); include([2,4]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],min,max;unit="kev");
+	notice_values([2],min,max;unit="kev");
+	notice_values([3],min,max;unit="kev");
+	notice_values([4],min,max;unit="kev");
+	fit_counts;
+	plot_unfold({2,4};res=2,power=3,dcol={4,18,8,9},mcol={12},dsym={0,0});
+}
+define RGS1_brokenCCD(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1)+gaussian(2))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - A: 0.514 keV (R1 for 301 and 201): Ni Ka
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",0.514,0,0.5,0.52);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	% - A: 0.557 keV (R1 for 301 and 201): O VII Triplet
+	set_par("gaussian(2).norm",1e-1,0,0,1);
+	set_par("gaussian(2).LineE",0.557,0,0.55,0.565);
+	set_par("gaussian(2).Sigma",1e-3,1);
+	
+	variable min=0.3;
+	variable max=2.5;
+	
+	exclude(all_data); include([1,2,3,4]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],min,max;unit="kev");
+	notice_values([2],min,max;unit="kev");
+	notice_values([3],min,max;unit="kev");
+	notice_values([4],min,max;unit="kev");
+	fit_counts;
+	renorm_counts;
+	plot_unfold({1,2,3,4};res=2,power=3,dcol={16,4,8,12},mcol={12},dsym={0,0,0,0}, scale={1,10,30,120});
+	vmessage("RGS2_brokenCCD loaded successfully");
+	vmessage("ObID 0840920301, RGS1: Black (Index 16)");
+	vmessage("ObID 0840920301, RGS2: Blue (Index 4)");
+	vmessage("ObID 0840920201, RGS1: Orange (Index 8)");
+	vmessage("ObID 0840920201, RGS2: Purple (Index 12)");
+	vmessage("Models: Red");
+}
+define RGS2_brokenCCD(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1)+gaussian(2))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - A: 0.64 keV (R1 for 301 and 201): O VIII
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",0.64,0,0.63,0.66);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	% - A: 0.557 keV (R1 for 301 and 201): O VII Triplet
+	set_par("gaussian(2).norm",1e-1,0,0,1);
+	set_par("gaussian(2).LineE",0.557,0,0.55,0.565);
+	set_par("gaussian(2).Sigma",1e-3,1);
+	
+	variable min=0.45;
+	variable max=0.7;
+	
+	exclude(all_data); include([1,2,3,4]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],min,max;unit="kev");
+	notice_values([2],min,max;unit="kev");
+	notice_values([3],min,max;unit="kev");
+	notice_values([4],min,max;unit="kev");
+	fit_counts;
+	renorm_counts;
+	plot_unfold({1,2,3,4};res=2,power=3,dcol={16,4,8,12},mcol={12},dsym={0,0,0,0}, scale={1,10,30,120});
+	vmessage("RGS2_brokenCCD loaded successfully");
+	vmessage("ObID 0840920301, RGS1: Black (Index 16)");
+	vmessage("ObID 0840920301, RGS2: Blue (Index 4)");
+	vmessage("ObID 0840920201, RGS1: Orange (Index 8)");
+	vmessage("ObID 0840920201, RGS2: Purple (Index 12)");
+	vmessage("Models: Red");
+}
+define OVIII(){
+	load_rebinned_RGS_XMM;
+	
+	fit_fun("constant(Isis_Active_Dataset)*(powerlaw(1)+gaussian(1)+gaussian(2))");
+	set_par("constant(1).factor",1,1);
+	set_par("constant(3).factor",1,1);
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.5,0,1,3);
+	
+	% - A: 0.640 keV (R1 for 301 and 201): O VIII
+	set_par("gaussian(1).norm",1e-1,0,0,1);
+	set_par("gaussian(1).LineE",0.65,0,0.64,0.66);
+	set_par("gaussian(1).Sigma",1e-3,1);
+	
+	% - A: 0.557 keV (R1 for 301 and 201): O VII Triplet
+	set_par("gaussian(2).norm",1e-1,0,0,1);
+	set_par("gaussian(2).LineE",0.557,0,0.55,0.565);
+	set_par("gaussian(2).Sigma",1e-3,1);
+	
+	variable min=0.45;
+	variable max=0.7;
+	
+	exclude(all_data); include([1,3]);
+	(,) = conf_loop(,1,0.1);
+	notice_values([1],min,max;unit="kev");
+	notice_values([2],min,max;unit="kev");
+	notice_values([3],min,max;unit="kev");
+	notice_values([4],min,max;unit="kev");
+	fit_counts;
+	renorm_counts;
+	plot_unfold({1,3};res=2,power=3,dcol={16,8},mcol={12},dsym={0,0}, scale={1,30});
+	vmessage("RGS2_brokenCCD loaded successfully");
+	vmessage("ObID 0840920301, RGS1: Black (Index 16)");
+	vmessage("ObID 0840920301, RGS2: Blue (Index 4)");
+	vmessage("ObID 0840920201, RGS1: Orange (Index 8)");
+	vmessage("ObID 0840920201, RGS2: Purple (Index 12)");
+	vmessage("Models: Red");
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Start of Fall 2025 Research
+
+define Fe_XVIII() { % Highlight XVIII line with RGS spectra (0.873 keV); use laor fits to explain pexmon * relativity component;
+	load_rebinned_RGS_XMM(100);
+	exclude(all_data); include({1,2,3,4});
+	
+	fit_fun("constant(Isis_Active_Dataset)*laor(1)");
+	notice_values(1,0.3,0.9;unit="keV");
+	notice_values(2,0.3,0.9;unit="keV");
+	notice_values(3,0.3,0.9;unit="keV");
+	notice_values(1,0.3,0.9;unit="keV");
+	plot_data({1,2,3,4}; xrange={0.3,0.9}, dcol={1,2,5,4});
+}
+
+define soft_excess() { % there is also a soft-excess, but we do not know why (look at pn data for bbody; tgcat.mit.edu, obsid 11858, 12103, 12104, 2010_02_12, look at region from 0.5-0.7). 
+% This could be very far away from the black hole. This is Random soft X-rays excess.
+	
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Technical functions for project scripts.
+
+define legend(){
+	vmessage("NuSTAR ObID 90501623002 Data = Blue (Index 4)");
+	vmessage("NuSTAR ObID 60160371002 Data = Orange (Index 8)");
+	vmessage("XMM-Newton ObID 0840920301 = Purple (Index 12)");
+	vmessage("XMM-Newton ObID 0840920201 = Green (Index 17)");
+	vmessage("Background Data (for all observations) = Black (Index 16)");
+	vmessage("Models (for all observations) = Red (Index 2)");
+}
+
+vmessage(" project_code.isis loaded successfully");
+vmessage(" gisaacNGC2992.sh loaded successfully.");

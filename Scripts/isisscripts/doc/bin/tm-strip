@@ -1,0 +1,172 @@
+#!/usr/bin/env slsh
+
+private variable Script_Version_String = "0.1.0";
+require ("cmdopt");
+
+private variable Doc_File_Info = Assoc_Type[Struct_Type];
+private variable Tm_Comment_String = "#c";
+
+private define add_doc_file_info (lang, doc_start, doc_stop, doc_prefix)
+{
+   Doc_File_Info[lang] = struct
+     {
+	lang = lang,
+	doc_start = doc_start,
+	doc_stop = doc_stop,
+	doc_prefix = doc_prefix,
+     };
+}
+
+add_doc_file_info ("sl", "%!%+", "%!%-", "%");
+add_doc_file_info ("c", "/*%+", " *%-", " *");
+
+private define get_doc_info (lang)
+{
+   if (assoc_key_exists (Doc_File_Info, lang))
+     return Doc_File_Info[lang];
+   return NULL;
+}
+
+private define doc_strip (file, fpin, fpout, df)
+{
+   if (df == NULL)
+     return -1;
+   
+   variable 
+     start = df.doc_start, ch_start = start[0], start_len = strbytelen(start),
+     stop = df.doc_stop, ch_stop = stop[0], stop_len = strbytelen(stop),
+     prefix = df.doc_prefix, ch_prefix = prefix[0], prefix_len = strbytelen(prefix),
+     linenum = 0, level = 0, line;
+   
+   while (-1 != fgets (&line, fpin))
+     {
+	linenum++;
+	variable ch = line[0];
+
+	if ((level == 0)
+	    && (ch != ch_start))
+	  continue;		       %  most common case
+	
+	if (level == 0)
+	  {
+	     if (0 == strncmp (line, start, start_len))
+	       {
+		  level = 1;
+		  () = fprintf (fpout, "%s __LINE__: %u\n", Tm_Comment_String, linenum);
+	       }
+	     continue;
+	  }
+	
+	if ((ch == ch_stop)
+	    && (0 == strncmp (line, stop, stop_len)))
+	  {
+	     () = fputs ("\\done\n", fpout);
+	     level = 0;
+	     continue;
+	  }
+
+	if ((ch == ch_prefix) 
+	    && (0 == strncmp (line, prefix, prefix_len)))
+	  () = fputs (substrbytes (line, 1+prefix_len, -1), fpout);
+	else
+	  {
+	     () = fprintf (stderr, "%s:%u: expecting %s\n", 
+			   file, linenum, prefix);
+	     () = fputs ("\\done\n", fpout);
+	     return -1;
+	  }
+     }
+   return 0;
+}
+
+private define guess_language (file)
+{
+   variable ext = path_extname (file);
+   if (ext == "")
+     return "sl";
+   return ext[[1:]];		       %  remove the "."
+}
+
+private define exit_version ()
+{
+   () = fprintf (stdout, "Version: %S\n", Script_Version_String);
+   exit (0);
+}
+
+private define exit_usage ()
+{
+   variable fp = stderr;
+   () = fprintf (fp, "Usage: %s [options] files... > outfile\n", __argv[0]);
+   variable opts = 
+     [
+      "Options:\n",
+      " -c                         Input files are C language files\n",
+      " -s|--slang                 Input files are S-lang language files\n",
+      " -v|--version               Print version\n",
+      " -h|--help                  This message\n",
+     ];
+   foreach (opts)
+     {
+	variable opt = ();
+	() = fputs (opt, fp);
+     }
+   exit (1);
+}
+
+	  
+define slsh_main ()
+{
+   variable c = cmdopt_new ();
+   variable is_slang = 0, is_c = 0;
+   c.add("h|help", &exit_usage);
+   c.add("v|version", &exit_version);
+   c.add("c", &is_c);
+   c.add("s|slang", &is_slang);
+
+   variable i = c.process (__argv, 1);
+   variable fpin, fpout = stdout;
+   variable language = NULL;
+
+   if (is_c && is_slang)
+     exit_usage ();
+   
+   if (is_c) language = "c";
+   if (is_slang) language = "sl";
+
+   if (i == __argc)
+     {
+	if (isatty (stdin))
+	  exit_usage ();
+	
+	if (language == NULL) language = "sl";
+	() = doc_strip ("<stdin>", stdin, fpout, get_doc_info (language));
+	return 0;
+     }
+
+   while (i < __argc)
+     {
+	variable file = __argv[i]; i++;
+	variable lang = language;
+
+	if ((lang == NULL)
+	    && (lang = guess_language (file), lang == NULL))
+	  lang = "sl";
+
+	variable dt = get_doc_info (lang);
+	if (dt == NULL)
+	  continue;
+
+	fpin = fopen (file, "r");
+	if (fpin == NULL)
+	  {
+	     () = fprintf (stderr, "Unable to open %s -- skipping it.\n", file);
+	     continue;
+	  }
+
+	() = fprintf (stdout, "%s __FILE__: %s\n", Tm_Comment_String, file);
+	() = doc_strip (file, fpin, fpout, dt);
+	() = fclose (fpin);
+     }
+   if (fpout != stdout) () = fclose (fpout);
+   return 0;
+}

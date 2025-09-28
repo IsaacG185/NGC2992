@@ -1,0 +1,1068 @@
+#! /usr/bin/env jed-script
+% -*- mode: slang; mode: fold -*-
+static variable TM_Expand_Version = "0.1.2-0";
+
+static define do_usage ()
+{
+   () = fprintf (stderr, "Usage: %s [-g] [--version] [-Iinclude_dir...] [-Mmacro-pkg] <input-file>|- <output-file>|-\n",
+		 __argv[0]);
+   exit (1);
+}
+
+public define tm_map_character ();
+public define tm_add_macro ();
+public define tm_set_include_path ();
+public define tm_get_include_path ();
+
+public variable __TM_FILE__;
+static define tm_process_buffer ();
+
+static define exit_with_version ()
+{
+   () = fprintf (stdout, "Version %s\n", TM_Expand_Version);
+   () = fprintf (stdout, "  (jed version: %s)\n", _jed_version_string);
+   () = fprintf (stdout, "  (S-Lang version: %s)\n", _slang_version_string);
+   exit (0);
+}
+
+static define write_buffer_to_outfile (outfile) %{{{
+{
+   if (outfile != "-")
+     {
+	() = write_buffer (outfile);
+	return;
+     }
+   bob ();
+   while (not (eobp ()))
+     {
+	push_mark ();
+	eol ();
+	go_right (1);
+	() = fputs (bufsubstr (), stdout);
+     }
+}
+
+%}}}
+
+static define read_input_file (infile) %{{{
+{
+   if (infile != "-")
+     {
+	if (1 != file_status (infile))
+	  {
+	     fprintf (stderr, "%s does not exist as an ordinary file", infile);
+	     exit (1);
+	  }
+	() = read_file (infile);
+	return;
+     }
+   
+   setbuf ("*stdin*");
+   variable line;
+   while (-1 != fgets (&line, stdin))
+     {
+	insert (line);
+     }
+   bob ();
+}
+
+%}}}
+
+public define jedscript_main () %{{{
+{
+   variable i;
+   variable infile = NULL;
+   variable outfile = NULL;
+   variable macro_pkg = NULL;
+
+   if (__argc < 2)
+     do_usage ();
+
+   variable istart = 1;
+
+   % Make allowances for running this script as jed --script script-name
+   if (__argv[1] == "-script")
+     istart = 3;
+
+   % setup the include path
+   variable local_include_dirs = ".";
+   for (i = istart; i < __argc; i++)
+     {
+	variable arg = __argv[i];
+	if (0 == strncmp (__argv[i], "-I", 2))
+	  {
+	     local_include_dirs = strcat(local_include_dirs, ",", arg[[2:]]);
+	     continue;
+	  }
+	if (0 == strncmp (arg, "-M", 2))
+	  {
+	     macro_pkg = arg[[2:]];
+	     continue;
+	  }
+	if (arg == "--version")
+	  exit_with_version ();
+	if (arg == "-g")
+	  {
+	     _traceback = 1;
+	     continue;
+	  }
+	break;
+     }
+   variable dir = getenv ("TM_INCLUDE");
+   if (dir != NULL)
+     local_include_dirs = strcat (local_include_dirs, ",", path2list (dir));
+   
+   % An now some system include paths.  Base this on where this script is
+   % located, e.g., if it is /usr/bin/tmexpand, then use /usr/share/tmexpand
+   dir = path_dirname (path_dirname (__argv[0]));
+   foreach (["share/tmexpand/macros", "lib/tmexpand/macros"])
+     {
+	variable subdir = ();
+	subdir = path_concat (dir, subdir);
+	if (2 == file_status (subdir))
+	  local_include_dirs = strcat (local_include_dirs, ",", subdir);
+     }
+   
+   tm_set_include_path (local_include_dirs);
+
+   if (i != __argc - 2)
+     do_usage ();
+
+   infile = __argv[i];
+   outfile = __argv[i+1];
+   
+   if ((infile == outfile) and (infile != "-"))
+     {
+	() = fprintf (stderr, "input and output files are the same\n");
+	exit (1);
+     }
+
+   read_input_file (infile);
+#if (_slang_version < 20000)
+   ERROR_BLOCK  
+     {
+	% Write out what we have to provide some additional debugging clues
+	write_buffer_to_outfile (outfile);
+	vmessage ("*** An error occurred. Look at %s for a hint of what and where.",
+		  outfile);
+	exit (1);
+     }
+#endif
+
+   __TM_FILE__ = infile;
+#if (_slang_version >= 20000)
+   variable e;
+   try (e)
+     {
+#endif
+	tm_process_buffer (macro_pkg);
+	write_buffer_to_outfile (outfile);
+#if (_slang_version >= 20000)
+     }
+   catch AnyError:
+     {
+	() = fprintf (stderr, "%S:%S:%S:%S\n", e.file, e.line, e.function,e.descr);
+	() = fprintf (stderr, "*** The following error occurred:\n%S\n",e.message);
+	write_buffer_to_outfile (outfile);
+	() = fprintf (stderr, "*** Look in %s near line %d for a clue where the failure occurred.\n", outfile, what_line());
+	exit (1);
+     }
+#endif
+   exit (0);
+}
+
+
+%}}}
+
+%{{{ Notes about environments 
+
+%% Notes:
+%% #%+
+%%   These symbols denote comments that get removed from the final
+%%   output file.
+%% #%-
+%% #% This is a comment that will NOT appear in the final output.
+%% #c This is a comment line that will appear in the output as a comment
+%% #v+
+%%    These are verbatim sections where \macros are not expanded.  However,
+%%    character translation will take place.  The region will be surrounded
+%%    by verbatim control sequences defined by __verbatim_begin/end
+%% #v-
+%% #p+
+%%    This text is enclosed in a passthru environment in which no character
+%%    translation nor macro expansion will take place.
+%% #p-
+%% #s+
+%%    This contains embedded slang code that gets evaluated.
+%% #s-
+%% In macro definitions (#d lines), only \objects are expanded but no character
+%% translation will take place.  This also means that if a literal < is used 
+%% in the definition, it will not get mapped to "&lt;", otherwise the macros 
+%% would be useless.
+%% 
+%% Note that the arguments to textmacro functions will be fully evaluated
+%% before the function is called.  This is not the case for macros.
+%%
+
+%}}}
+
+%{{{ Local Variables 
+
+static variable Dictionary;
+static variable TextMac_Include_Dirs = ".";
+static variable Char_Mapping_Table;
+static variable Remove_Comment_Lines;
+static variable Trim_Empty_Lines;
+static variable Comment_Begin;
+static variable Comment_End;
+static variable Verbatim_Begin;
+static variable Verbatim_End;
+static variable Passthru_Begin;
+static variable Passthru_End;
+
+%}}}
+
+%{{{ Macro Functions 
+
+% This is useful in conjunction with \if.
+static define strlen_function (str)
+{
+   vinsert ("%d", strlen (str));
+}
+
+static define strcmp_function (a,b)
+{
+   vinsert ("%d", strcmp (a,b));
+}
+
+
+static define if_function ()
+{
+
+   variable expr, this, that = "";
+   if (_NARGS == 3)
+     that = ();
+   (expr,this)=();
+
+   %expr = tm_expand_expression ();
+   if (eval(expr))
+     insert (this);
+   else
+     insert (that);
+
+   %vmessage ("running \if{%s}{%s}{%s}\n", expr, this, that);
+}
+
+static define btrim_function ()
+{
+   push_mark ();
+   bskip_chars ("\n\t ");
+   del_region ();
+}
+
+static define newline_function ()
+{
+   newline ();
+}
+
+static define space_function ()
+{
+   variable n = 1;
+   if (_NARGS)
+     n = integer ();
+  insert_spaces (n);
+}
+
+static define today_function ()
+{
+   variable months = "JanFebMarAprMayJunJulAugSepOctNovDec";
+   variable tm = localtime (_time ());
+   vinsert ("%s %d, %d", months[[0:2]+3*tm.tm_mon], tm.tm_mday, 1900+tm.tm_year);
+}
+
+static define get_username_function ()
+{
+   insert (get_username ());
+}
+
+static define get_hostname_function ()
+{
+   insert (get_hostname ());
+}
+
+static define get_realname_function ()
+{
+   insert (get_realname ());
+}
+
+static define getenv_function ()
+{
+   variable e, d = "";
+   if (_NARGS == 2)
+     d = ();
+   e = ();
+   variable s = getenv (e);
+   if (s == NULL) s = d;
+   insert (s);
+}
+
+static define escape_function (s)
+{
+   variable h = "";
+   foreach (s)
+     {
+	variable ch = ();
+	h += sprintf ("&#%d;", ch);
+     }
+   insert (h);
+}
+
+
+%}}}
+
+%{{{ Core Functions that implement the macro processor 
+
+static define create_macro_struct (definition, min_args, max_args)
+{
+   variable s = struct
+     {
+	definition, min_args, max_args
+     };
+   s.definition = definition;
+   s.min_args = min_args;
+   s.max_args = max_args;
+   
+%   vmessage ("Adding define=%S, min_args=%S, max_args=%S", 
+%	     definition, s.min_args, s.max_args);
+   return s;
+}
+
+static define tm_is_defined (fname)
+{
+   if (assoc_key_exists (Dictionary, fname))
+     return Dictionary[fname];
+
+   return NULL;
+}
+
+static define tm_do_function (fun, argv, argc)
+{
+   variable i;
+
+   _for (1, argc - 1, 1)
+     {
+	i = ();
+	argv[i];
+     }
+   variable args = __pop_args (argc-1);
+   (@fun) (__push_args (args));
+}
+
+static define tm_do_macro (argv, argc)
+{
+   variable i;
+   bob ();
+   while (fsearch_char ('$'))
+     {
+	del ();
+	i = what_char ();
+	if (i == 'n')
+	  {
+	     del ();
+	     insert (string (argc));
+	     continue;
+	  }
+	i -= '0';
+	if ((i > 0) and  (i < argc))
+	  {
+	     del ();
+	     insert (argv[i]);
+	  }
+     }
+}
+
+public define tm_add_macro ()
+{
+   variable name, def, min_args, max_args;
+   if (_NARGS == 4)
+     (min_args, max_args) = ();
+   else
+     {
+	max_args = ();
+	min_args = max_args;
+     }
+   (name, def) = ();
+
+   Dictionary[name] = create_macro_struct (def, min_args, max_args);
+}
+
+#iffalse
+static define dump_dictionary ()
+{
+   pop2buf ("*dict*");
+   foreach (Dictionary) using ("keys", "values")
+     {
+	variable keys, values;
+
+	(keys, values) = ();
+	vinsert ("Key:%s:Nargs:%d-%d:Value:%s\n", keys, values.min_args, values.max_args, values.definition);
+     }
+}
+#endif
+
+static define get_min_max_args (s, a, b)
+{
+   variable n = sscanf (s, "%d:%d", a, b);
+   if (n == 1)
+     @b = @a;
+   else if (n == 0)
+     return -1;
+
+   return 0;
+}
+
+static define get_control_variable_value (name)
+{
+   return sprintf ("%S", tm_is_defined (name).definition);
+}
+
+
+static define get_definitions ()
+{
+   variable name, num_args, def;
+
+   bob ();
+   while (bol_fsearch ("#d "))
+     {
+	variable min_args, max_args;
+
+	go_right (2);
+	skip_white ();
+	push_mark ();
+	skip_chars ("-a-zA-Z0-9_");
+	name = bufsubstr ();
+	min_args = 0;
+	max_args = 0;
+	if (looking_at ("#"))
+	  {
+	     go_right(1);
+	     push_mark ();
+	     skip_chars ("0-9:");
+	     if (-1 == get_min_max_args (bufsubstr (), &min_args, &max_args))
+	       verror ("Function %s has illegal specification", name);
+	  }
+
+	skip_white ();
+	push_mark ();
+	eol ();
+	def = bufsubstr ();
+
+	tm_add_macro (name, def, min_args, max_args);
+
+	delete_line ();
+     }
+   
+   Comment_Begin = get_control_variable_value ("__comment_begin");
+   Comment_End = get_control_variable_value ("__comment_end");
+   Remove_Comment_Lines = get_control_variable_value ("__remove_comment_lines");
+   Remove_Comment_Lines = (Remove_Comment_Lines != "0");
+   Verbatim_Begin = get_control_variable_value ("__verbatim_begin");
+   Verbatim_End = get_control_variable_value ("__verbatim_end");
+   Passthru_Begin = get_control_variable_value ("__passthru_begin");
+   Passthru_End = get_control_variable_value ("__passthru_end");
+   Trim_Empty_Lines = get_control_variable_value ("__remove_empty_lines");
+   Trim_Empty_Lines = integer (Trim_Empty_Lines);
+}
+
+static define parse_buffer ();	       %  forward declaration
+static variable NTIMES= 1;
+
+static define parse_buffer ()
+{
+   variable def;
+   variable fname, argc, argv;
+
+   argv = String_Type [4];
+
+   bob ();
+
+   while (fsearch ("\\"))
+     {
+	push_spot_bol ();
+
+	if (looking_at_char ('#'))
+	  {
+	     pop_spot ();
+	     eol ();
+	     continue;
+	  }
+
+	pop_spot ();
+
+	% Now look for special forms
+	if (orelse
+	    {looking_at ("\\\\")}
+	    {looking_at ("\\{")}
+	    {looking_at ("\\}")}
+	    {looking_at ("\\#")})
+	  {
+	     go_right (2);
+	     continue;
+	  }
+
+	del ();			       %  nuke \\
+
+	push_mark ();
+	variable pnt = _get_point ();
+	skip_chars ("-a-zA-Z_0-9");
+	if (pnt == _get_point ())
+	  {
+	     go_right (1);
+	     % It must be \X where X is some other character
+	  }
+	fname = bufsubstr_delete ();
+
+	variable s;
+	s = tm_is_defined (fname);
+	if (s == NULL)
+	  {
+	     %verror ("Reference to %s undefined.", fname);
+	     vmessage ("Reference to %s undefined.", fname);
+	     % undefined--- put it back
+	     %pop_mark_1 ();
+	     vinsert ("\\%s", fname);
+	     push_spot ();
+	     vmessage ("Line is: %s", line_as_string ());
+	     pop_spot ();
+
+	     continue;
+	  }
+
+	variable min_argc = s.min_args + 1;
+	variable max_argc = s.max_args + 1;
+	variable definition = s.definition;
+	variable is_fun = typeof (definition) == Ref_Type;
+
+	push_mark ();	       %  we will return here for expansion
+	if (is_fun == 0) insert (definition);
+	
+	% Now get arguments
+	push_mark ();		       %  mark for del_region below
+	if (max_argc == 1)
+	  {
+	     if (looking_at ("{}"))    %  allow {} in \macro{}blabla
+	       deln (2);
+	  }
+	if (max_argc > length (argv))
+	  argv = String_Type [max_argc];
+
+	argv[*] = "";
+	% Build argument list
+	argc = 1;
+
+	if (max_argc > 1) forever
+	  {
+	     variable m = create_user_mark ();
+
+	     skip_chars ("\n\t ");
+	     !if (looking_at_char ('{'))
+	       {
+		  goto_user_mark (m);
+
+		  if (argc < min_argc)
+		    verror ("Expecting at least %d arguments for %s.", s.min_args, fname);
+
+		  break;
+	       }
+
+	     argc++;
+	     if (argc > max_argc)
+	       {
+		  insert ("<----Parsing stopped here---->");
+		  verror ("Expecting at most %d arguments for %s -- found %d (max_argc=%d)", s.max_args, fname, argc, max_argc);
+	       }
+
+	     push_mark ();
+
+	     if (1 != find_matching_delimiter (0))
+	       {
+		  pop_mark_1 ();
+		  verror ("Unable to find closing '}' for expansion of %s args", fname);
+	       }
+	     del ();		       %  del }
+	     exchange_point_and_mark ();
+	     del ();		       %  del {
+	     exchange_point_and_mark ();
+
+	     if (is_fun)
+	       {
+		  % If it is a function, then make sure
+		  % the arguments are fully evaluated before passing them
+		  % to the function.
+		  narrow_to_region ();
+
+		  parse_buffer ();
+		  mark_buffer ();
+
+		  widen_region ();
+
+
+	       }
+	     argv[argc-1] = bufsubstr ();
+	  }
+
+	del_region ();		       %  deletes the argument list
+
+	if (is_fun)
+	  {
+	     tm_do_function (definition, argv, max_argc);
+	     pop_mark_1 ();
+	  }
+	else if (max_argc > 1)
+	  {
+	     narrow_to_region ();
+	     tm_do_macro (argv, max_argc);
+	     
+	     bob ();
+	     widen_region ();
+	  }
+	else pop_mark_1 ();
+     }
+}
+
+static define tm_parse_buffer ()
+{
+   get_definitions ();
+   
+   runhooks ("tm_parse_buffer_before_hook");
+   parse_buffer ();
+
+#iffalse
+   dump_dictionary ();
+#endif
+}
+
+% leaves point at END of insertion
+public define tm_include_file (file)
+{
+   variable dir, dirfile;
+   variable n;
+
+   if (strncmp (file, "/", 1)
+	and strncmp (file, "./", 2)
+	and strncmp (file, "../", 3))
+     {
+	n = 0;
+	dirfile = "";
+	variable dirs;
+
+	(,dirs,,) = getbuf_info ();
+	dirs += "," + TextMac_Include_Dirs;
+
+	while (dir = extract_element (dirs, n, ','),
+	       (dir != NULL))
+	  {
+	     n++;
+	     dirfile = dircat (dir, file);
+	     if (1 == file_status (dirfile))
+	       break;
+	     %vmessage ("Trying %s", dirfile);
+	  }
+	file = dirfile;
+     }
+
+   if (-1 == insert_file (file))
+     verror ("Unable to insert %s", file);
+}
+
+static define tm_preprocess_buffer ()
+{
+   variable token;
+   variable file, cs;
+   variable n, list;
+   variable is_verb;
+
+   bob ();
+   while (bol_fsearch ("#i "))
+     {
+	go_right (2);
+	skip_white ();
+	push_mark_eol ();
+	file = strtrim (bufsubstr ());
+
+	!if (strlen (file)) continue;
+
+	delete_line ();
+
+	% Is this include part of a verbatim section?  If so, include the file
+	% but indent it so that any macro definitions, etc are not detected
+	% as such.  This also allows for a file to include itself.
+	push_spot ();
+	is_verb = 0;
+	if (bol_bsearch ("#v+"))
+	  {
+	     n = what_line ();
+	     pop_spot ();
+	     push_spot ();
+	     if ((0 == bol_bsearch ("#v-"))
+		 or (what_line () < n))
+	       is_verb = 1;
+	  }
+	pop_spot ();
+	push_mark ();
+	tm_include_file (file);
+	if (is_verb == 0)
+	  {
+	     pop_mark_1 ();
+	     continue;
+	  }
+	narrow_to_region ();
+	bob ();
+	do
+	  {
+	     insert ("    ");
+	     eol_trim ();	       %  also avoids insertion at eob
+	  }
+	while (down_1 ());
+	widen_region ();
+     }
+
+   % Get rid of fold marks, if any
+   bob ();
+   while (fsearch ("#%{{{"))
+     del_eol ();
+   bob ();
+   while (fsearch ("#%}}}"))
+     del_eol ();
+
+   % Now join continuation lines
+   bob ();
+   while (bol_fsearch_char ('#'))
+     {
+	while (not (eobp) and ffind ("\\\n"))
+	  {
+	     del(); del ();
+	  }
+	eol ();
+     }
+
+   % delete commented sections
+   bob ();
+   while (bol_fsearch ("#%+"))
+     {
+	push_mark ();
+	if (bol_fsearch ("#%-"))
+	  {
+	     eol ();  go_right(1);
+	     del_region ();
+	  }
+	else
+	  {
+	     pop_mark (1);
+	     error ("Unterminated #%+");
+	  }
+     }
+
+   % Process embedded slang code
+   bob ();
+   while (bol_fsearch ("#s+"))
+     {
+	push_mark ();
+	!if (bol_fsearch ("#s-"))
+	  error ("Unterminated %s+");
+
+	delete_line ();		       %  remove #s-
+	narrow_to_region ();
+	bob();
+	delete_line ();		       %  remove #s+
+	evalbuffer ();
+	erase_buffer ();
+	widen_region ();
+     }
+
+   % Mark passthru environments
+   bob ();
+   while (bol_fsearch ("#p+"))
+     {
+	while (down (1) and not (looking_at ("#p-")))
+	  {
+	     insert ("#p ");
+	  }
+     }
+
+   % replace <, >, &, etc with SGML equivalents.
+   % Avoid lines that start with #.
+   bob ();
+   if (Char_Mapping_Table != NULL) while (re_fsearch ("^[^#]"))
+     {
+	push_mark ();
+	!if (bol_fsearch_char ('#'))
+	  eob ();
+	translate_region (Char_Mapping_Table);
+     }
+
+   % Mark verbatim environments
+   cs = CASE_SEARCH;
+   CASE_SEARCH = 1;
+   bob ();
+   while (bol_fsearch ("#v"))
+     {
+	!if (looking_at ("#v+"))
+	  throw ParseError, "Expected #v+, found something else";
+
+	while (down (1) and not (looking_at ("#v")))
+	  {
+	     insert ("#v ");
+	  }
+	!if (looking_at ("#v-"))
+	  throw ParseError, "Expected to find #v-";
+	eol ();
+     }
+   bob ();
+   CASE_SEARCH=cs;
+}
+
+static define trim_excess_lines (num_empties_allowed)
+{
+   bob ();
+   do
+     {
+	eol ();
+	trim ();
+     }
+   while (down_1());
+   bob ();
+   push_mark ();
+   skip_chars ("\n");
+   del_region ();
+
+   eob ();
+   push_mark ();
+   bskip_chars ("\n");
+   go_right(1);
+   del_region ();
+
+   bob();
+   do
+     {
+	eol ();
+	if (bolp ())
+	  {
+	     loop (num_empties_allowed)
+	       {
+		  go_right (1);
+		  !if (eolp ())
+		    break;
+	       }
+	     push_mark ();
+	     skip_chars ("\n");
+	     del_region ();
+	  }
+     }
+   while (down_1());
+}
+
+static define tm_clean_buffer (remove_empty_lines_val)
+{
+   variable v, cs;
+
+   bob ();
+   while (bol_fsearch_char ('#'))
+     {
+	del ();
+	switch (what_char ())
+	  {
+	   case 'd':
+	     delete_line ();
+	  }
+	  {
+	   case '%':
+	       delete_line ();
+	  }
+	  {
+	   case 'c':
+	     if (Remove_Comment_Lines)
+	       delete_line ();
+	     else
+	       {
+		  del ();
+		  insert (Comment_Begin);
+		  eol ();
+		  insert (Comment_End);
+	       }
+	  }
+	  {
+	     insert_char ('#');
+	  }
+     }
+
+   % Now expand the escaped characters
+   bob ();
+   while (fsearch_char ('\\'))
+     {
+	push_spot_bol ();
+	if (looking_at_char ('#'), pop_spot ())
+	  {
+	     eol ();
+	     continue;
+	  }
+	if (orelse
+	    {looking_at ("\\}")}
+	    {looking_at ("\\\\")}
+	    {looking_at ("\\#")}
+	    {looking_at ("\\{")}
+	    )
+	  del ();
+	go_right_1 ();
+     }
+   
+   if (remove_empty_lines_val>0)
+     trim_excess_lines (remove_empty_lines_val-1);
+
+   % Now remove verbatim marks
+   bob ();
+   cs = CASE_SEARCH;
+   CASE_SEARCH = 0;
+
+   while (bol_fsearch ("#v"))
+     {
+	del ();
+	v = what_char () - 'V';
+	del ();
+	if (what_char == '+')
+	  {
+	     if (v)
+	       {
+		  del_eol ();
+		  insert (Verbatim_Begin);
+	       }
+	     else delete_line ();
+	  }
+	else if (what_char == '-')
+	  {
+	     if (v)
+	       {
+		  del_eol ();
+		  insert (Verbatim_End);
+	       }
+	     else delete_line ();
+	  }
+	else if (not (eolp))
+	  del ();		       %  The trim may have removed space
+     }
+
+   % handle passthru environments
+   bob ();
+   while (bol_fsearch ("#p"))
+     {
+	del ();
+	del ();
+	if (what_char == '+')
+	  {
+	     del_eol ();
+	     insert (Passthru_Begin);
+	  }
+	else if (what_char == '-')
+	  {
+	     del_eol ();
+	     insert (Passthru_End);
+	  }
+	else if (not (eolp))
+	  del ();		       %  delete the space
+     }
+   CASE_SEARCH = cs;
+   bob ();
+}
+
+% This can be used in #s+/#s- environments
+public define tm_map_character (ch, str)
+{
+   Char_Mapping_Table[ch] = str;
+}
+
+static define tm_process_buffer (macro_pkg)
+{
+   variable cs = CASE_SEARCH;
+   variable cbuf, html_buf;
+
+   cbuf = whatbuf ();
+
+   CASE_SEARCH = 1;
+   ERROR_BLOCK
+     {
+	CASE_SEARCH = cs;
+     }
+
+   html_buf = strcat ("*textmac*", cbuf);
+
+   if (BATCH) sw2buf (html_buf);
+   else pop2buf (html_buf);
+
+   erase_buffer ();
+   insbuf (cbuf);
+   % Make sure the proper syntax table is in place before processing
+   tm_mode ();
+   bob ();
+
+   if (macro_pkg != NULL)
+     {
+	vinsert ("#i %s.tm\n", macro_pkg);
+	bob ();
+     }
+
+
+   Char_Mapping_Table = String_Type[256];
+   tm_map_character ('&', "&amp;");
+   tm_map_character ('<', "&lt;");
+   tm_map_character ('>', "&gt;");
+   %tm_map_character ('$', "&dollar;");
+   
+   Dictionary = Assoc_Type[Struct_Type];
+   tm_add_macro ("if", &if_function, 2, 3);
+   tm_add_macro ("strlen", &strlen_function, 1, 1);
+   tm_add_macro ("strcmp", &strcmp_function, 2, 2);
+   tm_add_macro ("get_username", &get_username_function, 0, 0);
+   tm_add_macro ("get_realname", &get_realname_function, 0, 0);
+   tm_add_macro ("get_hostname", &get_hostname_function, 0, 0);
+   tm_add_macro ("getenv", &getenv_function, 1, 2);
+   tm_add_macro ("escape", &escape_function, 1, 1);
+   tm_add_macro ("__today__", &today_function, 0, 0);
+   tm_add_macro ("__btrim__", &btrim_function, 0, 0);
+   tm_add_macro ("__newline__", &newline_function, 0, 0);
+   tm_add_macro ("__space__", &space_function, 0, 1);
+   
+   tm_add_macro ("__verbatim_end", "</pre>", 0, 0);
+   tm_add_macro ("__verbatim_begin", "<pre>", 0, 0);
+   tm_add_macro ("__passthru_begin", "", 0, 0);
+   tm_add_macro ("__passthru_end", "", 0, 0);
+   tm_add_macro ("__comment_begin", "<!--", 0, 0);
+   tm_add_macro ("__comment_end", " -->", 0, 0);
+   tm_add_macro ("__remove_comment_lines", "0", 0, 0);
+   
+   % if 0, do not remove empty lines.  If N, remove N or more consecutive
+   % blank lines.
+   tm_add_macro ("__remove_empty_lines", "1", 0, 0);
+
+   tm_preprocess_buffer ();
+
+   tm_parse_buffer ();
+   
+   tm_clean_buffer (Trim_Empty_Lines);
+   Dictionary = NULL;
+
+   bob ();
+   EXECUTE_ERROR_BLOCK;
+}
+
+public define tm_set_include_path (path)
+{
+   %vmessage ("Path set to: %s", path);
+   TextMac_Include_Dirs = path;
+}
+
+public define tm_get_include_path ()
+{
+   return TextMac_Include_Dirs;
+}
+
+%}}}

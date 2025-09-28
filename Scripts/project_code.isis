@@ -783,7 +783,7 @@ define figure30() {
 define figure31() {
 	s_c;
 	connect_points(0);
-	xlabel("Rates (xyz)"); ylabel("con_cxz"); title("Rate of three energy bands (Intensity) and color of xz from two observations");
+	xlabel("Rates (xyz)"); ylabel("con_cxz"); title("Rate of three energy bands (Intensity) vs. color of xz from two observations");
 	plotxy(sum_rates.rate,sum_rates.err,sum_rates.err,cxz.cons,cxz.err,cxz.err; xrange={0, 6}, yrange={-0.5,0.5}, decol=4, dcol=4);
 	plotxy(gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err,gb_cxz.cons, gb_cxz.err,gb_cxz.err; oplt=1, decol=8,dcol=8);
 }

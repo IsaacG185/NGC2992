@@ -1,0 +1,503 @@
+Isaac Gutierrez WashU '28
+
+The files in this project include:
+	- Figures (located in the "Figures" sub-directory).
+	- Project Scripts (located in the "Scripts" sub-directory).
+	- My (messy) notes throughout the project (located in the "Messy Notes" sub-directory); keep in mind that these do not reflect the final project and contains errors that I have accounted for in the actual project (in this file, the scripts, the figures, etc.) but may not have accounted for in my messy notes.
+	- This organized explanation of the project.
+	- The projects original proposal ("Research_Proposal.pdf")
+
+All of these files are located in this directory, with each group of files separated in respective subdirectories (i.e. you will my figures in the "Figures" directory inside this directory).
+	
+This project is initially focused on "The lively accretion disc in NGC 2992-I. Transient iron K emission lines in the high-flux state", Marinucci et al., 2020, MNRAS 496, 3412-3423, and will be referred to extensively in my analysis (link: academic.oup.com/mnras/article/496/3/3412/5857190?searchresult=1). The data utilized for this project comes from two observations from NuSTAR: Observation IDs 60160371002 and 90501623002 and two observations from XMM-Newton: Observation IDs 0840920301 and 0840920201. These can be found in the HEASARC data archive via these links: 
+
+NuSTAR ObID 90501623002: https://heasarc.gsfc.nasa.gov/FTP/nustar/data/obs/05/9//90501623002/
+NuSTAR ObID 60160371002: https://heasarc.gsfc.nasa.gov/FTP/nustar/data/obs/01/6//60160371002/
+XMM-Newton ObID 0840920301: https://nxsa.esac.esa.int/nxsa-web/#search (Click on "Filters for Observation, Proposal and Catalogue Searches" drop-down, type in 0840920301 in Observation ID box, and scrhool down to click "Search")
+XMM-Newton ObID 0840920201: https://nxsa.esac.esa.int/nxsa-web/#search (Click on "Filters for Observation, Proposal and Catalogue Searches" drop-down, type in 0840920201 in Observation ID box, and scrhool down to click "Search")
+
+Note: the data in the "Original_Data" was modified to unzip necessary files from their compressed HEASARC versions.
+
+This project is split into the following sections:
+	- NuSTAR: Cleaning and Extraction
+	- NuSTAR: Analysis
+	- NuSTAR: Conclusions
+	- XMM-Newton: Cleaning and Extraction
+	- XMM-Newton: Analysis
+	- XMM-Newton: Conclusions
+	- Remarks for Future Observations
+	
+	The following tools will be needed to replicate this project (links to each located below):
+	- SAOImageDS9: https://sites.google.com/cfa.harvard.edu/saoimageds9
+	- Interactive Spectral Interpretation System (ISIS): https://space.mit.edu/cxc/isis/install.html
+	- HEASOFT: https://heasarc.gsfc.nasa.gov/docs/software/lheasoft/index.html
+	- Isisscripts: http://www.sternwarte.uni-erlangen.de/isis/ (a copy is provided in the "Scripts" subdirectory)
+	- XMSAS: https://www.cosmos.esa.int/web/xmm-newton/download-and-install-sas
+	
+	Email isaacgutierrezc185@gmail.com if you have any issues with this and need assistance.
+	
+	Before starting any analysis of my project, please start by adjusting the file paths (lines of code with "# ADJUST" at the end) in "gisaacNGC2992.sh", located in the "Scripts" sub-directory of this project directory, to the relevant paths to your computer. Some of these paths will require you to find certain files from the software above.
+	
+	Then, run "gisaacNGC2992.sh" (in the "Scripts" subdirectory) in a terminal/shell to configure all figures, variables, etc, that are described in this instruction manual. It is important to note that this project is based on the file paths I used, and so those file paths MUST be adjusted for other analyses of my project before running the script following the instructions above. Commands in the script that must be adjusted in this manner will have a % ADJUST or # ADJUST at the end of each relevant line. Simply change the path to the relevant file, when told to do so in this file, by locating the file with the exact name (there should be no files anywhere in this project with identical names) as listed in the script (at the end of the path, i.e. readme.txt in "variable example = load_data("/PATH/HERE/readme.txt") % ADJUST"), then input the correct path relative to your computer.
+	
+NuSTAR: Cleaning and Extraction
+
+	The cleaned and extracted data provided in the original data package from HEASARC on NGC 2992 may be outdated, so must run the most updated cleaning and extraction methods. The function "cleaning_and_extraction_I.sl" (IMPORTANT: All functions are located in the file "project_code.isis") cleans and extracts the two observation data sets through the "nupipeline", the main interface for NuSTAR data cleaning and extraction. The script also contains notes on how I was able to execute it and get the relevant data, and as stated previously, can be run in ISIS to follow along my process. Note that this extraction usually takes a while (~20-30 minutes).
+	
+	Next, the spectra for both observations is extracted. The instructions for such are located in "cleaning_and_extraction_script_II" function in project_code.isis (all functions are in this file and thus this file will be used for all future reference to functions) and it is important to note that, as described in this script file, prior to running the script the data must be extracted from certain .evt files through the SAOImageDS9 tool (the coordinates for the desired region can also be written into the commands in this function, but I used region .reg files from SAOImageDS9 for simplicity). After running the .evt files through SAOImageDS9, we get .reg files for the source and background of each observation and each focal plane. This is then converted into .pha files described in cleaning_and_extraction_script_II. 
+	
+	An important thing to note is that, throughout the entire project, the following data and models are color coded as follows:
+		
+	- NuSTAR ObID 90501623002 Data = Blue 
+	- NuSTAR ObID 60160371002 Data = Orange 
+	- XMM-Newton ObID 0840920301 = Purple
+	- XMM-Newton ObID 0840920201 = Green
+	- Background Data (for all observations) = Black
+	- Models (for all observations) = Red
+	
+	Note: You can call the "legend" command in ISIS to see this list again.
+	
+	After running cleaning_and_extraction_II, the full spectra, split into the focal plane modules A and B on NuSTAR, are found in the new .pha files and then graphed as the following figures (located in the "Figures" directory). You may also find the code used in ISIS to generate these figures, as all other figures apart of this project, and these can be run in ISIS through functions defined in the script file and as listed in this file (i.e running figure1 in ISIS to plot the same figure in the Figures subdirectory with the title "Figure 1". In terms of functions that generate graphs, those defined with "figure" are used for the final analysis, whereas those defined with "example" consider intermediate steps taken throughout the project and are not used for the final analysis/conclusions. 
+	
+	- Figure 1: 90501623002, FPMA, figure1 (figure1; is the command/function)
+	- Figure 2: 90501623002, FPMB, figure2
+	- Figure 3: 60160371002, FPMA, figure3
+	- Figure 4: 60160371002, FPMB, figure4
+	
+	Now, my mentor told me to group the data into three distinct sections for a more rigorous analysis of each third of the data. Initially I tried bins from 3 - 10 keV (4.132 - 1.240 A), 10 - 30 keV (1.240 - 0.413 A), 30 - 79 keV (0.413 - 0.157 A), but these did not have an equal amount of counts per graph, and thus may provide different SNRs for all three graphs and negatively affect/blur conclusions and modeling later on. Examples of the three bands are shown. Note that these are not useful in the final conclusions made in this project, as all figures titled "Example", but serve as a record of an important step I had to determine during my analysis:
+	
+	- Example Figure 1: 60160371002, FPMA, 3 - 10 keV (4.132 - 1.240 A), example1
+	- Example Figure 2: 60160371002, FPMA, 10 - 30 keV (1.240 - 0.413 A), example2
+	- Example Figure 3: 60160371002, FPMA, 30 - 79 keV (0.413 - 0.157 A), example3
+	
+	Note: We will refer to all relevant quantities through energy (keV) rather than Angstrom (A) from now on for simplicity.
+	
+	Instead of what is done in the examples, I split the total counts/bin counts into three sections, where the divisions were found through the "counts_bin_splitting" function. This function identifies bins that separate the counts into exactly 1/3, thus there are two of these bins to create three distinct energy regions. The following 12 graphs were calculated. The bin number (not the value in keV) is sometimes referred to as the PI channel or channel number in the NuSTAR documentation, and is converted to usable keV values using the equation defined in the "cleaning_and_extraction_script_III" script (Energy = Channel_Number * 0.04 + 1.6):
+	
+	- Figure 5: 60160371002, FPMA, PI Channels 35 - 97 (3 - 5.5 keV), figure5
+	- Figure 6: 60160371002, FPMA, PI Channels 98 - 187 (5.54 - 9.10 keV), figure6
+	- Figure 7: 60160371002, FPMA, PI Channels 188 - 1909 (9.14 keV - 79 keV), figure7
+	- Figure 8: 60160371002, FPMB, PI Channels 35 - 96 (3 - 5.46 keV), figure8
+	- Figure 9: 60160371002, FPMB, PI Channels 97 - 185 (5.5 - 9.02 keV), figure9
+	- Figure 10: 60160371002, FPMB, PI Channels 186 - 1909 (9.06 - 79 keV), figure10
+	- Figure 11: 90501623002, FPMA, PI Channels 35 - 98 (3 - 5.54 keV), figure11
+	- Figure 12: 90501623002, FPMA, PI Channels 99 - 188 (5.58 - 9.14 keV), figure12
+	- Figure 13: 90501623002, FPMA, PI Channels 189 - 1909 (9.18 - 79 keV), figure13
+	- Figure 14: 90501623002, FPMB, PI Channels 35 - 98 (3 - 5.54 keV), figure14
+	- Figure 15: 90501623002, FPMB, PI Channels 99 - 186 (5.58 - 9.06 keV), figure15
+	- Figure 16: 90501623002, FPMB, PI Channels 187 - 1909 (9.10 keV - 79 keV), figure16
+
+	Now, "cleaning_and_extraction_script_III" splits the four data files (two focal plane modules for two observations) into the three calculated energy regions as spectra, which will be useful for further observation. This generates twelve separate packages of files, all organized by their file names, and used for the next step.
+
+Analysis
+
+	Now, we must make lightcurves. The "s_c" (structures and colors) command and function assigns the "time", "rate" and "error" extensions into matrices that are then rebinned into structures to make the variability of the data more visible in its lightcurves. The gaps between data is also removed (times when no data was taken by the telescope due to orbit constraints around the Earth) Note: The s_c command is automatically run when running gisaacNGC2992.sh to simplify future analysis.
+	
+	In the rebinning process, I found that observation 90501623002 worked best with 600 second bins, and 60160371002 to work best with 300 bins. This makes sense as 90501623002 is a longer observation.
+	
+	- Function; example of unbinned data, example of binned data, for both observations.
+	
+	
+	In the code of the s_c function, matrix variables are defined based on the low, middle, and high bands (we split the data into three sections, as shown in figures 5-16). These bands are labeled x,y, and z, respectively. For example, for observation 90501623002, the data from 3 - 5.54 keV, the low band for this observation is associated with variables leading with an x, and the data from focal plane module A of these parameters have an a in them. So, for time, rate, and error (the extensions in the data from this observation segment of 3 - 5.54 keV) for focal plane module A (FPMA) of observation 90501623002, the variables are written as xta, xra, and xra_e. For the exact same parameters but for the other observation, 60160371002, they are led by a b (so b_xta, b_xra, and b_xra_e for these parameters). In this case, xtb,xrb, and xrb_e define the same parameters but through FPMB instead of FPMA. Next, two structures are defined to rebin this data for 600 second counts (300 second counts for 60160371002 data), xa and xb, which are then concatenated in the structure xcon. The equations used to concatenate the rates, errors, and times are located in the s_c function. The same process is done for y and z (middle and high bands), and the same process is duplicated for x,y, and z for the other observation.
+	These structures are defined to then compare the energy bands/segments via color-to-color diagrams, allowing us to observe the variability further and locate distinctions in the emissions of the AGN. The colors are defined as two rate structures a and b, compared via the following equation: (a-b)/(a+b).
+	To calculate the error of the colors, we use the equation:
+	- e(a,b) = [(dF/da * a')^2 + (dF/db * b')^2]^1/2, where F is (a-b)/(a+b), a' is FPMA data rate errors (the "error" extensions of the data) and b' is the FPMB data rate errors. It is important to note that this equation only works when a and b are independent of one another (which is why there are no overlaps in the three intervals of energy we extracted above.
+	- Taking the partial derivatives dF/da and dF/db, we get,
+	- e(a,b) = (2/(a+b)^2)[(ba')^2+(-ab')^2]^1/2, or
+	- e(a,b) = (2/(a+b)^2)(b^2 a'^2 + a^2 b'^2)^1/2
+	- This equation is represented in each color error qualifier (i.e. cxy.err for the cxy structure, where x and y are the colors that replace a and b in the generic equation derived).
+	
+	This analysis focused on using colors xy, yz, and xz, but colors yx, zy, zx, which represent other physical properties, are included in the code. Colors for observation 90501623002 are denoted with a c, such as cxy, cyz, and cxz, whereas colors for observation 60160371002 have a b_ in front of the color denomination (i.e b_cxy, b_cyz, and b_cxz). As shown in the s_c command, the colors are based on the concatenated data for the appropriate energy intervals/bands (i.e xcon and ycon for cxy) from FPMA and FPMB.
+	The color graphs for the separate observations are described below, standardized x axis ranges of -0.5 to 0.5 and y axis ranges of -0.2 to 0.2 for both observations to simplify analyses (all data is positioned within these ranges, but you may adjust them in the figure commands if you choose to do so:
+	
+	(observation 90501623002):
+	- cxy vs. cyz , figure17 % [185] WORKING ON THIS CURRENTLY
+	- cxy vs. cxz, figure18
+	- cyz vs. cxz, figure19
+	
+	(observation 60160371002):
+	- b_cxy vs. b_cyz, example4
+	- b_cxy vs. b_cxz, example5
+	- b_cyz vs. b_cxz, example6
+	
+	Looking at the observation 60160371002, we can see there are some issues with our code; given that the colors are written as (a-b)/(a+b), there are values where the colors can be infinitely large or undefined, causing the issues in these graphs. As a result, structures leading with gb_ (g for good) are defined to have the exact same data but exclude counts where nonexistent or infinitely large values exist (so gb_cxy, gb_cyz, gb_cxz for this analysis). Additionally, this is done for the concatenated rate structures as well (defined via gb_xcon, gb_ycon, and gb_zcon) so that the rates matrices of this second observation have the same length of the colors of this observation and can be compared graphically later. It is important to note that, given that the first observation does not have any nonexistent or infinite values, it does not exclude any counts like what we are doing here with the second observation. The diagrams for observation 60160371002, with only good data, is described below:
+	
+	- gb_cxy vs. gb_cyz, figure20
+	- gb_cxy vs. gb_cyz, figure21
+	- gb_cyz vs. gb_cxz, figure22
+	
+	Next, colors from both observations (collectively) were plotted together via overplotting. These are labeled as con_cxy, con_cyz, and con_cxz:
+	
+	- con_cxy vs. con_cyz, figure23
+	- con_cxy vs. con_cxz, figure24
+	- con_cyz vs. con_cxz, figure25
+	
+	Next, I compared the colors from both observations (collectively) and time. In the graphs, you can see that at a certain point, the orange data stops. This makes sense as the blue data comes from a longer observation:
+	
+	- time vs. con_cxy, figure26
+	- time vs. con_cyz, figure27
+	- time vs. con_cxz, figure28
+	
+	Also, rates and colors from both observations (collectively) are compared. Rates are calculated via the sum_rates and gb_sum_rates structures and their definitions in the s_c function:
+	
+	- Rates (xyz) vs. con_cxy, figure29
+	- Rates (xyz) vs. con_cyz, figure30
+	- Rates (xyz) vs. con_cxz, figure31
+	
+	In the data, we can observe the black hole's variability through a rate vs. time graph. Here are the same rates over time. The graph size is adjusted to more easily view the variability:
+	- Time vs. Rates (xyz), figure32
+	
+	The next step is to generate models for the data (.pha files of the data for each focal plane module, in this case). The modeling_setup function prepares the four data sets for application and is automatically run when opening gisaacNGC2992.sh.
+	
+	Initially, I attempted a simple powerlaw with absorption (tbabs model), testing with and without the Ka Fe emission line described by the paper (gaussian model). Functions are labeled as obA and obB (observation A and observation B) for observations 90501623002 and 60160371002, respectively (both focal planes for each observation are concatenated in the modeling_setup function and isolated in the respective functions of each observation). These models are described below, and the functions show how exactly they are applied to the powerlaw (addition and multiplication arithmetic apply differently to a model in ISIS):
+	
+	- obA: powerlaw, tbabs, example7
+	- obB: powerlaw, tbabs, example8
+	- obA: powerlaw, tbabs, gaussian, example9
+	- obB: powerlaw, tbabs, gaussian, example10
+	
+	This model can be improved, so I attempted to apply other models that my mentor and I came up with after observing these example models. This model optimization was done on obA as it is a longer observation and thus has more data to work with. This modified model is described in the obA_modelI function. Then, to see if the model can be simplified, I attempted eight optimizations using the conf_loop command in ISIS to narrow down the parameters and their values to the most optimal, while also resonably complex, parameters. These are the conditions that my mentor suggested:
+	
+	- obA: bknpower, tbabs, gaussian, highecut
+	- obA: bknpower, tbabs, gaussian, highecut, laor
+	- obA: powerlaw, tbabs, gaussian, highecut
+	- obA: powerlaw, tbabs, gaussian, highecut, laor
+	- obB: bknpower, tbabs, gaussian, highecut
+	- obB: bknpower, tbabs, gaussian, highecut, laor
+	- obB: powerlaw, tbabs, gaussian, highecut
+	- obB: powerlaw, tbabs, gaussian, highecut, laor
+	
+	Next, optimized models. Describe intermediate models that I'm doing. Broad component is present in both observations, narrow seems to appear in second observation. Not super consistent models between the two, so will use data from XMM-Newton to narrow down the narrow band. Explain notation. Settled on obA_cutoffpl_pexmon_tbabs_laor and obB_gabs_cutoffpl_pexmon_tbabs_laor for final models for these data.
+	
+	XMM-Newton Note: the data in the "Original_Data" was modified to unzip necessary files from their compressed HEASARC versions. Extraction, then getting lightcurves; explain issues with XMM SAS, so manual extraction via ISIS; Load ImagingEvts in ds9 and write down regions (bin 4, full size). XMM lc functions, saved to fits file, extraced lcs
+
+% 0840920301	
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920301
+setxspec 34
+setsas
+
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF
+cd $SAS_ODF
+cifbuild
+
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/ccf.cif
+odfingest
+
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/3556_0840920301_SCX00000SUM.SAS
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920301
+epproc
+
+% Filter
+evselect table=3556_0840920301_EPN_S001_ImagingEvts.ds  filtertype=expression \
+filteredset=f_events.fits \
+expression='(PATTERN <= 4)&&(PI in [200:15000])&&#XMMEA_EP&&(FLAG==0)'
+
+ObID 0840920301: 
+		src: (26621.488,27898.503) radius (600)
+		bkg: (28525.481,25802.506) radius (1200)
+
+% Lightcurve
+evselect table=f_events.fits  filtertype=expression \
+expression='((X,Y) in CIRCLE(26621.488,27898.503,600))' \
+withrateset=Y rateset='src.lc' \
+maketimecolumn=Y timebinsize=10 makeratecolumn=yes
+
+evselect table=f_events.fits  filtertype=expression \
+expression='((X,Y) in CIRCLE(28525.481,25802.506,1200))' \
+withrateset=Y rateset='bkg.lc' \
+maketimecolumn=Y timebinsize=10 makeratecolumn=yes
+  
+% Spectra
+evselect table=f_events.fits \
+filtertype=expression \
+expression='((X,Y) in CIRCLE(26621.488,27898.503,600))' \
+energycolumn='PI' withspectrumset=yes withspecranges=yes \
+spectrumset='src_spectra.fits' \
+specchannelmin=0 specchannelmax=20479 spectralbinsize=5
+
+evselect table=f_events.fits \
+filtertype=expression \
+expression='((X,Y) in CIRCLE(28525.481,25802.506,1200))' \
+energycolumn='PI' withspectrumset=yes withspecranges=yes \
+spectrumset='bkg_spectra.fits' \
+specchannelmin=0 specchannelmax=20479 spectralbinsize=5
+
+% Backscaling
+backscale spectrumset=src_spectra.fits \
+badpixlocation=f_events.fits
+
+backscale spectrumset=bkg_spectra.fits \
+badpixlocation=f_events.fits
+
+% rmf and arf generation
+
+rmfgen rmfset=src_spectra.rmf \
+spectrumset=src_spectra.fits
+
+arfgen arfset=src_spectra.arf \
+spectrumset=src_spectra.fits withrmfset=yes \
+rmfset=src_spectra.rmf withbadpixcorr=yes \
+badpixlocation=f_events.fits
+
+% All except AttKh, Badpixels, and ImagingEvts moved to pn subdirectory
+  
+% 0840920201
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920201
+setxspec 34
+setsas
+
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF
+cd $SAS_ODF
+cifbuild
+
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/ccf.cif
+odfingest
+
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/3555_0840920201_SCX00000SUM.SAS
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920201
+epproc
+
+% Filter
+evselect table=3555_0840920201_EPN_S001_ImagingEvts.ds  filtertype=expression \
+filteredset=f_events.fits \
+expression='(PATTERN <= 4)&&(PI in [200:15000])&&#XMMEA_EP&&(FLAG==0)'
+
+ObID 0830920201:
+	src: (26627.508,27922.506) radius (600)
+	bkg: (28595.509,25730.505) radius (1200)
+
+% Lightcurve
+evselect table=f_events.fits  filtertype=expression \
+expression='((X,Y) in CIRCLE(26627.508,27922.506,600))' \
+withrateset=Y rateset='src.lc' \
+maketimecolumn=Y timebinsize=10 makeratecolumn=yes
+
+evselect table=f_events.fits  filtertype=expression \
+expression='((X,Y) in CIRCLE(28595.509,25730.505,1200))' \
+withrateset=Y rateset='bkg.lc' \
+maketimecolumn=Y timebinsize=10 makeratecolumn=yes
+  
+% Spectra
+evselect table=f_events.fits \
+filtertype=expression \
+expression='((X,Y) in CIRCLE(26627.508,27922.506,600))' \
+energycolumn='PI' withspectrumset=yes withspecranges=yes \
+spectrumset='src_spectra.fits' \
+specchannelmin=0 specchannelmax=20479 spectralbinsize=5
+
+evselect table=f_events.fits \
+filtertype=expression \
+expression='((X,Y) in CIRCLE(28595.509,25730.505,1200))' \
+energycolumn='PI' withspectrumset=yes withspecranges=yes \
+spectrumset='bkg_spectra.fits' \
+specchannelmin=0 specchannelmax=20479 spectralbinsize=5
+
+% Backscaling
+backscale spectrumset=src_spectra.fits \
+badpixlocation=f_events.fits
+
+backscale spectrumset=bkg_spectra.fits \
+badpixlocation=f_events.fits
+
+% rmf and arf generation
+
+rmfgen rmfset=src_spectra.rmf \
+spectrumset=src_spectra.fits
+
+arfgen arfset=src_spectra.arf \
+spectrumset=src_spectra.fits withrmfset=yes \
+rmfset=src_spectra.rmf withbadpixcorr=yes \
+badpixlocation=f_events.fits
+
+
+	then color-to-color diagrams for comparison: XMM_counts_bin_splitting, then extracting light curves at those increments (I picked increments based on A PI channel values, so 400,1746,3378, and 10000; no overlap, these are rounded)
+
+% 0840920301
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn
+setxspec 34
+setsas
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/ccf.cif
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/3556_0840920301_SCX00000SUM.SAS
+
+evselect table=f_events.fits rateset=A_400_1746.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [400:1746])'
+
+evselect table=f_events.fits rateset=A_1747_3378.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [1747:3378])'
+
+evselect table=f_events.fits rateset=A_3379_10000.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [3379:10000])'
+
+% 0840920201
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920201/pn
+setxspec 34
+setsas
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/ccf.cif
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/3555_0840920201_SCX00000SUM.SAS
+
+evselect table=f_events.fits rateset=B_400_1746.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [400:1746])'
+
+evselect table=f_events.fits rateset=B_1747_3378.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [1747:3378])'
+
+evselect table=f_events.fits rateset=B_3379_10000.lc \
+maketimecolumn=yes makeratecolumn=yes timebinsize=100 expression='(PI in [3379:10000])'
+
+
+	then XMM_s_c;
+	figure 32, cxy vs cyz for both observations, compare with figure23
+	figure 33, cxy vs cxz for both, compare with figure24
+	figure 34, cyz vs cxz for both, compare with figure25
+	
+	Next, Intensity vs. colors (separate obs.; split two ends of region, generate spectrum for each region, concatenate times in order of these sections; do for all three colors; pick color that gives most extreme differences in 1/3 regions): 
+	
+	Set up intensities in XMM_s_c;
+	figure35, intensity vs. cxy both observartions, compare with figure29
+	figure36, intensity vs. cyz both observations, compare with figure30
+	figure37, intensity vs. cxz both observations, compare with figure31
+	then extrema_finding, then
+	figure38: region one, figure39: region two, figure40: regions one and two
+	% Intensity (xyz) vs. Colors of xz, figure37, focusing on A (301)
+	% First region: cxz from 0.0357 to 0.134, I from 7.19 to 13.5
+	% Second region: cxz from -0.143 to -0.0336 , I from 7.08 to 13.8
+	save_extrema_finding, then, 
+	
+% 0840920301
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920301/pn
+setxspec 34
+setsas
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/ccf.cif
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/3556_0840920301_SCX00000SUM.SAS
+
+evselect table=f_events.fits filtertype=expression filteredset=cf_events.fits \
+expression="((X,Y) in CIRCLE(26621.488,27898.503,600)) && gti(r_one_times.fits,TIME)" %APPLIES BACKSCALING
+
+evselect table=cf_events.fits withspectrumset=yes spectrumset=extrema_src_spectra.fits \
+energycolumn=PI spectralbinsize=5 withspecranges=yes specchannelmin=0 specchannelmax=20479
+
+rmfgen spectrumset=extrema_src_spectra.fits rmfset=extrema_src_spectra.rmf
+
+arfgen spectrumset=extrema_src_spectra.fits arfset=extrema_src_spectra.arf \
+withrmfset=yes rmfset=extrema_src_spectra.rmf \
+withbadpixcorr=yes
+
+Then, extrema_spectra
+
+Then, XMM_regrouping1-3, NuSTAR_regrouping2 next,
+	301 has fewer counts but a longer exposure, meaning that either the source is dimmer in this observation or there is some increase in absorption/obscuration in 301 than in 201.
+	Proof: If we align the scaling such that the 6.4 Ka emission lines are at the same position, 
+	ObID 301 is dimmer in the 0-3 keV region. Adjust SNR values, 
+	
+	Now, modelling, fit both observations based on tbabs. try with and without laor;
+	XMM_A_tbabs_no_laor
+	XMM_A_tbabs_laor
+	XMM_B_tbabs_no_laor
+	XMM_B_tbabs_laor
+	XMM_A_test_no_laor
+	XMM_A_test_laor
+	
+	
+	XMM_A_adj1
+	XMM_B_adj1
+	
+	% Without TBpcf; doesn't really work, TBpcf seems to be relevant here
+	XMM_A_adj2
+	XMM_B_adj2 
+	
+	Focus on bbody component of model, use RGS data to resolve this region
+	Extraction of RGS data
+	
+% 0840920301	
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920301/RGS
+setxspec 34
+setsas
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/ccf.cif
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920301/ODF/3556_0840920301_SCX00000SUM.SAS
+rgsproc % Runs rgsspectrum by default
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% R1, src
+Do checks
+
+rgsspectrum evlist=P0840920301R1S007EVENLI0000.FIT srclist=P0840920301R1S007SRCLI_0000.FIT
+
+More checks
+
+rgsrmfgen spectrumset=P0840920301R1S007SRSPEC1001.FIT rmfset=r1_o1_rmf.fits \
+emin=0.4 emax=2.5 rows=4000
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% R1, bkg
+rgsrmfgen spectrumset=P0840920301R1S007BGSPEC1001.FIT rmfset=bkg_r1_o1_rmf.fits \
+emin=0.4 emax=2.5 rows=4000
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% R2
+Do checks
+
+rgsspectrum evlist=P0840920301R2S009EVENLI0000.FIT srclist=P0840920301R2S009SRCLI_0000.FIT
+
+More checks
+
+rgsrmfgen spectrumset=P0840920301R2S009SRSPEC1001.FIT rmfset=r2_o1_rmf.fits \
+emin=0.4 emax=2.5 rows=4000
+
+
+% 0840920201	
+cd /man1/gisaac/NGC_2992/Extracted_Data/0840920201/RGS
+setxspec 34
+setsas
+SAS_PATH=/man1/PACKAGES/xmmsas/xmmsas_22.1.0-a8f2c2afa-20250304
+SAS_CCFPATH=/man1/PACKAGES/xmmsas/ccf
+LHEASOFT=/man1/PACKAGES/heasoft-6.35.2/x86_64-pc-linux-gnu-libc2.34
+export SAS_ODFPATH=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF
+export SAS_CCF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/ccf.cif
+export SAS_ODF=/man1/gisaac/NGC_2992/Extracted_Data/0840920201/ODF/3555_0840920201_SCX00000SUM.SAS
+rgsproc % Runs rgsspectrum by default
+	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% R1
+Do checks
+
+rgsspectrum evlist=P0840920201R1S007EVENLI0000.FIT srclist=P0840920201R1S007SRCLI_0000.FIT
+
+More checks
+
+rgsrmfgen spectrumset=P0840920201R1S007SRSPEC1001.FIT rmfset=r1_o1_rmf.fits \
+emin=0.4 emax=2.5 rows=4000
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% R2
+Do checks
+
+rgsspectrum evlist=P0840920201R2S009EVENLI0000.FIT srclist=P0840920201R2S009SRCLI_0000.FIT
+
+More checks
+
+rgsrmfgen spectrumset=P0840920201R2S009SRSPEC1001.FIT rmfset=r2_o1_rmf.fits \
+emin=0.4 emax=2.5 rows=4000	
+
+
+

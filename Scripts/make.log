@@ -1,0 +1,156 @@
+deleting the following files:
+-----------------------------
+make[1]: Entering directory '/man1/PACKAGES/isisscripts'
+
+test/fft_has_not_been_redefined_differently.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/require_isisscripts_does_not_produce_any_error.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/require_isisscripts_loads_without_additional_modules.sl
+
+test/require_isisscripts_load_with_different_available_modules.sl
+Testing different Module combinations ... 
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+xspec
+curl
+fitswcs
+fork
+gsl
+gslinterp
+pcre
+pgplot
+png
+rand
+select
+socket
+stats
+wcsfuns
+... done!
+
+test/test_CCF_1d.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_dms2deg.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_documentation.sl
+
+test/test_easter.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_jd.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_position_angle.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_reflection_fraction_relxill.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+ skipping tests of reflection_fraction_relxill(), as table could not be found
+
+test/test_save_slang_variable.sl
+ Solar Abundance Vector set to angr:  Anders E. & Grevesse N. Geochimica et Cosmochimica Acta 53, 197 (1989)
+ Cross Section Table set to bcmc:  Balucinska-Church and McCammon, 1998
+
+test/test_src_checks.sl
+make[1]: Leaving directory '/man1/PACKAGES/isisscripts'
+cd doc && make distclean isisscripts_help.txt isisscripts_help.md && make clean && cd ..
+make[1]: Entering directory '/man1/PACKAGES/isisscripts/doc'
+rm -rf *~ */*~ src/isisscripts src/ISISscripts.sgml ISISscripts.tex  *.log *.aux *.out *.toc *.dvi
+rm -f isisscripts_help.txt ISISscripts.pdf src/isisscripts.tm src/isisscripts.tm.BAK ISISscripts.md ISISscripts-*.html
+make[2]: Entering directory '/man1/PACKAGES/isisscripts'
+deleting the following files:
+-----------------------------
+make[2]: Leaving directory '/man1/PACKAGES/isisscripts'
+/man1/PACKAGES/isisscripts/doc
+find ../src -type d -print | perl -ne 'chomp($_); m|../src(.*)|; my $dir = "src/isisscripts$1"; my $file = "$dir/tm"; print "if [ ! -d $dir ]; then mkdir -p $dir; fi\nrm -f $file\nfind $_ -maxdepth 1 -type f -name \\*.sl -exec 'bin/tm-strip' {} >> $file \\;\n'bin/tm-sort.sl' $file\nrm -f $file.BAK\n";' > src/tm-strip.sh
+sh src/tm-strip.sh # | tee tm-strip.log
+Processing src/isisscripts/tm ...done.
+Processing src/isisscripts/FITS/tm ...done.
+Processing src/isisscripts/FITS/ad_image/tm ...done.
+Processing src/isisscripts/FITS/fits_save_fit/tm ...done.
+Processing src/isisscripts/Mike/tm ...done.
+Processing src/isisscripts/data/tm ...done.
+Processing src/isisscripts/data/GTI/tm ...done.
+Processing src/isisscripts/data/lightcurve/tm ...done.
+Processing src/isisscripts/data/pulsar/tm ...done.
+Processing src/isisscripts/data/spectrum.datastructures/tm ...done.
+Processing src/isisscripts/data/spectrum.loaddata/tm ...done.
+Processing src/isisscripts/data/timing/tm ...done.
+Processing src/isisscripts/data/binning/tm ...done.
+Processing src/isisscripts/fitting/tm ...done.
+Processing src/isisscripts/fitting/fit-functions/tm ...done.
+Processing src/isisscripts/fitting/fit-functions/lines/tm ...done.
+Processing src/isisscripts/fitting/fit-functions/simple_gpile/tm ...done.
+Processing src/isisscripts/fitting/fit-functions/pulsar/tm ...done.
+Processing src/isisscripts/fitting/fit_2d/tm ...done.
+Processing src/isisscripts/fitting/parameters/tm ...done.
+Processing src/isisscripts/fitting/statistics/tm ...done.
+Processing src/isisscripts/fitting/xyfit/tm ...done.
+Processing src/isisscripts/fitting/xyfit/fit-functions/tm ...done.
+Processing src/isisscripts/fitting/ensemble-samplers/tm ...done.
+Processing src/isisscripts/fitting/relxill/tm ...done.
+Processing src/isisscripts/histogram/tm ...done.
+Processing src/isisscripts/misc/tm ...done.
+Processing src/isisscripts/misc/ISISshell/tm ...done.
+Processing src/isisscripts/misc/SRT/tm ...done.
+Processing src/isisscripts/misc/astronomy/tm ...done.
+Processing src/isisscripts/misc/atomic/tm ...done.
+Processing src/isisscripts/misc/atomic/xstar/tm ...done.
+Processing src/isisscripts/misc/image/tm ...done.
+Processing src/isisscripts/misc/math/tm ...done.
+Processing src/isisscripts/misc/play/tm ...done.
+Processing src/isisscripts/misc/radio/tm ...done.
+Processing src/isisscripts/misc/satellites/tm ...done.
+Processing src/isisscripts/misc/satellites/Chandra/tm ...done.
+Processing src/isisscripts/misc/satellites/INTEGRAL/tm ...done.
+Processing src/isisscripts/misc/satellites/RXTE/tm ...done.
+Processing src/isisscripts/misc/simulation/tm ...done.
+Processing src/isisscripts/misc/wind_model/tm ...done.
+Processing src/isisscripts/misc/imagedownload/tm ...done.
+Processing src/isisscripts/plot/tm ...done.
+Processing src/isisscripts/sixte/tm ...done.
+Processing src/isisscripts/sixte/wrapper/tm ...done.
+Processing src/isisscripts/slang/tm ...done.
+Processing src/isisscripts/slang/arrays/tm ...done.
+Processing src/isisscripts/slang/arrays/2d/tm ...done.
+Processing src/isisscripts/slang/arrays/multi-dimensional/tm ...done.
+Processing src/isisscripts/slang/astronomy/tm ...done.
+Processing src/isisscripts/slang/color/tm ...done.
+Processing src/isisscripts/slang/compatibility/tm ...done.
+Processing src/isisscripts/slang/date/tm ...done.
+Processing src/isisscripts/slang/images/tm ...done.
+Processing src/isisscripts/slang/math/tm ...done.
+Processing src/isisscripts/slang/misc/tm ...done.
+Processing src/isisscripts/slang/physics/tm ...done.
+Processing src/isisscripts/slang/strings/tm ...done.
+Processing src/isisscripts/slang/structs/tm ...done.
+Processing src/isisscripts/slang/structs/tables/tm ...done.
+Processing src/isisscripts/slang/structs/tables/lightcurves/tm ...done.
+Processing src/isisscripts/slang/structs/tables/struct-arrays/tm ...done.
+Processing src/isisscripts/slang/structs/histograms/tm ...done.
+Processing src/isisscripts/slang/system/tm ...done.
+Processing src/isisscripts/slang/geometry/tm ...done.
+Processing src/isisscripts/slang/trees/tm ...done.
+Processing src/isisscripts/xspec/tm ...done.
+find src/isisscripts -type f -exec cat {} >> src/isisscripts.tm \;
+Processing src/isisscripts.tm ...done.
+bin/tmexpand -Isrc doc/ISISscripts_md.tm ISISscripts.md
+bin/tmexpand -Ishare -Mslhlp_isisscripts src/isisscripts.tm isisscripts_help.txt # | tee tmexpand_slhlp.log
+mv ISISscripts.md isisscripts_help.md
+make[1]: Leaving directory '/man1/PACKAGES/isisscripts/doc'
+make[1]: Entering directory '/man1/PACKAGES/isisscripts/doc'
+rm -rf *~ */*~ src/isisscripts src/ISISscripts.sgml ISISscripts.tex  *.log *.aux *.out *.toc *.dvi
+make[1]: Leaving directory '/man1/PACKAGES/isisscripts/doc'
+mv doc/isisscripts_help.txt share/isisscripts.txt && mv doc/isisscripts_help.md share/isisscripts.txt.md

@@ -1,0 +1,144 @@
+#!/usr/bin/env slsh
+
+_traceback=1;
+
+public define PRIVATE () {return 0;}
+public define PUBLIC () {return 1;}
+public define CURRENT () {return 2;}
+
+define funstr2struct (s, asso_r) {
+  variable ret = struct {name, path, scope};
+  variable chop = strchop(s, ':', 0);
+  ret.name = chop[0];
+  chop = strchop(chop[1], ',', 0);
+  ret.scope = strtrim(chop[0]);
+  ret.path = strtrim(path_dirname(chop[1]));
+  (@asso_r)[ret.name] = ret;
+}
+
+define create_dir_tree (info, depth, target) {
+  % create directory tree for function reference
+  variable dir = Assoc_Type[Int_Type];
+  variable cwd = getcwd;
+  chdir(target);
+  foreach (info) {
+    variable s,c;
+    (s,c) = ();
+    variable chop = strchop(c.path, '/', 0);
+    depth = (depth>length(chop)-1)? length(chop)-1 : depth;
+    ifnot (assoc_key_exists(dir, chop[1])) {
+      _for (1, depth, 1) {
+	variable i = ();
+	()=mkdir(strjoin(chop[[1:i]], "/"));
+	dir[strjoin(chop[[1:i]], "/")] = 1;
+      }
+    }
+  }
+  chdir(cwd);
+  return dir;
+}
+
+define get_functions () {
+  % collect functions from stdin and pack in struct
+  variable lines = fgetslines (stdin);
+  variable fun = Assoc_Type[Struct_Type];
+
+  array_map(&funstr2struct, lines, &fun);
+  return fun;
+}
+
+define get_helps (fn) {
+  % return help text and function name
+  variable fp = fopen(fn, "r");
+  variable help_md=Assoc_Type[String_Type], line, fun_name = "";
+  variable buffer = "";
+  variable in_help = 0;
+  while (-1 != fgets(&line, fp)) {
+    if (string_match(line, "^----$")) {
+      if (fun_name != "") {
+	help_md[fun_name] = buffer;
+      }
+      fun_name = ""; buffer = "";
+    } else {
+      if (fun_name == "" &&
+	  string_match(line, "^#### \([_a-zA-Z][_a-zA-Z0-9]*\)$"R)) {
+	variable pos, len;
+	(pos, len) = string_match_nth(1);
+	fun_name = line[[pos:pos+len-1]];
+      }
+      buffer += line;
+    }
+  }
+  if (fun_name != "") {
+    help_md[fun_name] = buffer;
+  }
+  return help_md;
+}
+
+define create_link (c, depth) {
+  % create link for reference page
+  variable scope = eval(strup(c.scope));
+  variable path, chop=strchop(c.path, '/', 0);
+  path = strjoin(chop[[1: (length(chop)>=depth)?depth : length(chop)]], "/") +
+    "#" + strlow(strcompress(c.name, "- "));
+  
+  switch (scope)
+  { case PRIVATE: return "";}
+  { case PUBLIC: return path;}
+  { case CURRENT: return path;}
+}
+
+define create_link_list (info, depth, target, md_fn) {
+  % builds linked toc and sub pages
+  variable help_entries = get_helps(md_fn); % process md-file
+  variable cwd = getcwd;
+  chdir(target);
+  variable fp = fopen("../Function-reference.md", "w");
+  ()=fprintf(fp, "%s", `## ISISscripts function reference
+List of all available functions defined in the ISISscripts. If a documentation for
+a function is available, it links to its location.
+
+----
+
+`);
+  variable fpsub;
+  variable keysel = assoc_get_keys(info);
+  variable sortlist = array_sort(keysel, &strcmp);
+  foreach (keysel[sortlist]) {
+    variable s = ();
+    variable c = info[s];
+    
+    variable link = create_link(c, depth);
+    if (link != "") {
+      if (assoc_key_exists(help_entries, s)) {
+	()=fprintf(fp, "%s[**%s**](Function-reference/%s)\n\n", ((eval(strup(c.scope))==PUBLIC())?"public ":""), s, link);
+	variable missing = access(strchop(link, '#', 0)[0]+".md", F_OK);
+	fpsub = fopen(strchop(link, '#', 0)[0]+".md", "a+");
+	if (fpsub == NULL) { vmessage("failed for %s!", link);}
+	if (missing) {	
+	  ()=fprintf(fpsub, "## Reference for %s functions\n\n", path_sans_extname(strchop(link, '#', 0)[0]));
+	}
+	()=fprintf(fpsub, "%s", help_entries[s]);
+	()=fclose(fpsub);
+      } else {
+	()=fprintf(fp, "%s**%s**\n\n", ((eval(strup(c.scope))==PUBLIC())?"public ":""), s);
+      }
+    }
+  }
+  ()=fclose(fp);
+}
+
+%% run it
+
+if (__argc != 4) {message("Usage: software_struct <target folder> <depth> <input-md>");}
+
+variable depth = atoi(__argv[2]);
+variable target = __argv[1];
+variable input = __argv[3];
+() = mkdir(target);
+
+variable fun_struct = get_functions;
+variable dirs = create_dir_tree(fun_struct, depth-1, target);
+create_link_list(fun_struct, depth, target, input);
+
+vmessage("Files injected in %s!", target);

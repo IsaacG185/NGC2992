@@ -1,0 +1,59 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+sub search_function {
+    my %map;
+    my @files = @_;
+    foreach my $file (@files) {
+	# print "$file\n";
+        open my $fp, $file or die "Could not open $file: $!";
+	foreach my $line (<$fp>) {
+	    if ($line =~ m/\s?private\s+define\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*\(/) {
+		if (not exists $map{$1.":private"}) {
+		    $map{$1.":private"} = $file;
+		}
+	    } elsif ($line =~ m/\s?public\s+define\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*\(/) {
+		if (not exists $map{$1.":public"}) {
+		    $map{$1.":public"} = $file;
+		}
+	    } elsif ($line =~ m/\s?define\s+([_a-zA-Z][_a-zA-Z0-9]*)\s*\(/) {
+		if (not exists $map{$1.":current"}) {
+		    $map{$1.":current"} = $file;
+		}
+	    }
+        }
+	close $fp;
+    }
+    return %map;
+}
+
+sub find_src_files {
+    my @files = ();
+    my $entry = $_[0];
+    if ((not -d $entry) and ($entry =~ m/\.sl$/)) {
+	push @files, $entry;
+	return @files;
+    }
+    opendir my $dh, $entry or die;
+    while (my $sub = readdir $dh) {
+	next if $sub eq '.' or $sub eq '..';
+	my @ret = find_src_files("$entry/$sub");
+	push @files, @ret;
+    }
+    close $dh;
+    return @files;
+}
+
+
+sub output_map {
+    my (%src_map) = @_;
+    foreach my $key (sort keys %src_map) {
+	print "$key, $src_map{$key}\n";
+    }
+}
+
+my @all_files = find_src_files ($ARGV[0]);
+my %all_map = search_function (@all_files);
+output_map (%all_map);

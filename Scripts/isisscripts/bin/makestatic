@@ -1,0 +1,473 @@
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+use Getopt::Long;
+use File::Find;
+use File::Slurp;
+
+my $chatty=0;
+my $moduleindex=0;
+my $functionindex=0;
+my $checkrequires=1;
+my $outfile="isisscripts.sl";
+my $removecomments=0; # DOES NOT YET FULLY WORK
+my $removewhitespace=0; # DOES NOT YET FULLY WORK (multi line strings!)
+my ($searchdir, $header, @first_scripts, @last_scripts);
+GetOptions (
+    "dir=s" => \$searchdir,
+    "moduleindex!"=> \$moduleindex,
+    "functionindex!" => \$functionindex,
+    "verbose|chatty+" => \$chatty,
+    "checkrequires!"=> \$checkrequires,
+    "outfile=s" => \$outfile,
+    "header=s" => \$header,
+    "prefix|first=s" => \@first_scripts, # these scripts have to be included at the beginning
+    "postfix|last=s" => \@last_scripts   # these scripts have to be included at the end
+);
+
+my %modules;
+
+my %functions;
+my %privfunctions;
+my %publfunctions;
+my %requires;
+my %requires_ns;
+my %imports;
+
+
+# find all slang files
+find( 
+    sub {if (-f $_ && $_ =~ /^.*\.sl$/ ) { 
+	$modules{$_}={path=>$File::Find::name,functions=>[],privfunctions=>[],publfunctions=>[],requires=>[],imports=>[],code=>[]}; 
+	 } }, 
+    $searchdir 
+    );
+
+#
+# default modules (these are always loaded)
+#
+$requires{xfig}=["DEFAULT"];
+$requires{xspec}=["DEFAULT"];
+$requires{vector}=["DEFAULT"];
+$requires{gsl}=["DEFAULT"];
+
+$requires_ns{gsl}="gsl";
+
+$imports{slmpi}=["DEFAULT"];
+
+
+#
+# we'll need these regexps quite a lot, so compile them once
+#
+
+# search a require statement
+my $requireregexp=qr/\s*require\s*\(\s*\"([\w\.]+)\"\s*(,\s*\"(\w+)\"\s*)?\)\s*;\s*/;
+
+# search an import statement
+#my $importregexp=qr/\s*import\s*\(\s*\"([\w\.]+)\"\s*,\)\s*;\s*/;
+my $importregexp=qr/\s*import\s*\(\s*\"([\w\.]+)\"\s*\)\s*;\s*/;
+
+
+#
+# process all files
+#
+foreach my $fi ( keys(%modules) ) {
+    print "Processing $fi\n" if ($chatty>0);
+    my @lines=read_file($modules{$fi}->{path});
+
+    foreach my $line ( @lines ) {
+	# we only take into account functions that are defined with
+	# define funcname
+	# private define funcname
+	# public define funcname
+	# at the start of the line
+	my $li=$line;
+	
+	# general function definition
+	if ($li =~ /^define\s+(\w+)\s*\(/ ) {
+	    my $func=$1;
+	    print "...found function $func\n" if ($chatty>1);
+	    $functions{$func}=$fi;
+	    push @{$modules{$fi}->{functions}},$func;
+	} else {
+	    # private function definition
+	    if ($li =~/^private\s+define\s+(\w+)\s*\(/) {
+		my $func=$1;
+		print "...found private function $func\n" if ($chatty>1);
+		$privfunctions{$func}=$fi;
+		push @{$modules{$fi}->{privfunctions}},$func;
+	    } else {
+		if ($li =~/^public\s+define\s(\w+)\s*\(/) {
+		    my $func=$1;
+		    print "...found private function $func\n" if ($chatty>1);
+		    $publfunctions{$func}=$fi;
+		    push @{$modules{$fi}->{publfunctions}},$func;
+		}
+	    }
+	}
+
+	# remember and then remove any require statements
+	# We do this in an iterative way, finding one statement
+	# after the other. There must be a more elegant way to do this,
+	# but I did not manage to find one
+	my $tryline=0;
+	if ($li =~ /try/ ) {
+	    $tryline=1;
+	}
+	while ($li =~ /$requireregexp/ ) {
+	    my $reqmod=$1;
+	    my $namespace;
+
+	    # remember the namespace for the module
+	    if (defined($3) ) {
+		$namespace=$3;
+		# name space clash
+		if (defined($requires_ns{$reqmod}) && $requires_ns{$reqmod} ne $namespace) {
+		    print "The Module $reqmod is already loaded into namespace $requires_ns{$reqmod}\n";
+		    print "in earlier submodules:\n";
+		    foreach my $mm ( @{$requires{$reqmod}} ) {
+			print "  $mm -- $modules{$mm}=>{path}\n";
+		    }
+		    print "Please ensure that you load the module into the same namespace.\n";
+		    die;
+		}
+		print "...found require for module $reqmod in namespace $namespace\n" if ($chatty>1);
+		$requires_ns{$reqmod}=$namespace;
+	    } else {
+		if (defined($requires_ns{$reqmod}) ) {
+		    # name space clash (yes, we need this twice!)
+		    print "The Module $reqmod is already loaded into namespace $requires_ns{$reqmod}\n";
+		    print "in earlier submodules:\n";
+		    foreach my $mm ( @{$requires{$reqmod}} ) {
+			print "  $mm -- $modules{$mm}->{path}\n";
+		    }
+		    print "Please ensure that you load the module into the same namespace.\n";
+		    die;
+		}
+		print "...found require for module $reqmod\n" if ($chatty>1);
+	    }
+	    # remember that this require is needded by the present module
+	    if (!defined($requires{$reqmod})) {
+		$requires{$reqmod}=[];
+	    }
+	    push @{$requires{$reqmod}},$fi;
+	    push @{$modules{$fi}->{requires}},$reqmod;
+	    
+	    # remove the require statement that we found
+	    $li=~ s/$requireregexp//;
+	}
+
+	while ($li =~ /$importregexp/ ) {
+	    my $importmod=$1;
+	    print "... found import for module $importmod\n";
+	    if(!defined($imports{$importmod})) {
+		$imports{$importmod}=[];
+	    }
+	    push @{$imports{$importmod}},$fi;
+	    push @{$modules{$fi}->{imports}},$importmod;
+	    # remove the import statement that we found
+	    $li=~ s/$importregexp//;
+	}
+	
+
+	#
+	if ($removecomments) {
+	    # remove comments starting at start of line
+	    $li=~ s/^%.*$//;
+	}
+
+	if ($removewhitespace) {
+	    # remove whitespace
+	    $li=~ s/^\s*//;
+	}
+
+	
+	# remember the line
+	# (i.e., if we modified $li above, this will be reflected here!)
+	if (!$tryline) {
+	    push @{$modules{$fi}->{code}},$li;
+	} else {
+	    push @{$modules{$fi}->{code}},$line;
+	}	    
+    }
+}
+
+#
+# Output what we found
+#
+if ($moduleindex) {
+    print "Functions associated with each module:\n";
+    foreach my $mod ( sort(keys(%modules)) ) {
+	print "$mod in $modules{$mod}->{path}:\n";
+	if ( @{$modules{$mod}->{functions}} ) {
+	    print "  functions : ";
+	    my $comma="";
+	    foreach my $fu (sort(@{$modules{$mod}->{functions}}) ) {
+		print "${comma}$fu";
+		$comma=", ";
+	    }
+	    print "\n";
+	}
+	if ( @{$modules{$mod}->{publfunctions}} ) {
+	    print "  public functions : ";
+	    my $comma="";
+	    foreach my $fu (sort(@{$modules{$mod}->{publfunctions}}) ) {
+		print "${comma}$fu";
+		$comma=", ";
+	    }
+	    print "\n";
+	}
+	if ( @{$modules{$mod}->{privfunctions}} ) {
+	    print "  private functions: ";
+	    my $comma="";
+	    foreach my $fu (sort(@{$modules{$mod}->{privfunctions}}) ) {
+		print "${comma}$fu";
+		$comma=", ";
+	    }
+	    print "\n";
+	}
+	if ( @{$modules{$mod}->{requires}} ) {
+	    print "  required modules : ";
+	    my $comma="";
+	    foreach my $mo (sort(@{$modules{$mod}->{requires}})) {
+		print "${comma}${mo}";
+		$comma=", ";
+	    }
+	    print "\n";
+	}
+	if ( @{$modules{$mod}->{imports}} ) {
+	    print "  imported libraries: ";
+	    my $comma="";
+	    foreach my $mo (sort(@{$modules{$mod}->{imports}})) {
+		print "${comma}${mo}";
+		$comma=", ";
+	    }
+	    print "\n";
+	}
+	print "\n";
+    }
+}
+
+if ($functionindex) {
+    my $maxlen=0;
+    foreach my $func (keys(%functions),keys(%publfunctions)) {
+	my $len=length($func);
+	$maxlen=$len if ($len>$maxlen);
+    }
+    print "Index of function definitions:\n";
+    foreach my $func (  sort { lc($a) cmp lc($b) } (keys(%functions))) {
+	printf("%-*s: %s\n",$maxlen,$func,$functions{$func});
+    }
+
+    print "Index of public function definitions:\n";
+    foreach my $func (  sort { lc($a) cmp lc($b) } (keys(%publfunctions))) {
+	printf("%-*s: %s\n",$maxlen,$func,$publfunctions{$func});
+    }
+}
+
+
+# generate isisscripts.sl
+if ( -f $outfile ) {
+    unlink $outfile or die "Cannot remove $outfile: $!\n";
+}
+
+write_file($outfile, {append=>1}, "$header\n\n")  if $header;
+
+if (@first_scripts) {
+    foreach my $fi ( @first_scripts ) {
+	my @lili=read_file($fi);
+	write_file($outfile,{append=>1},@lili);
+    }
+}
+
+
+# undefine internal requires
+if (defined($requires{isisscripts}) ) {
+    delete($requires{isisscripts});
+}
+if (defined($requires{"isisscripts.sl"}) ) {
+    delete($requires{"isisscripts.sl"});
+}
+
+# output all requires that are not local
+my @requires;
+foreach my $req ( sort keys(%requires)) {
+    if (defined($modules{$req})) {
+	print "Skipping require for internal module $req\n" if ($chatty>1);
+    } else {
+	print "Including module $req\n" if ($chatty>1);
+	if (defined($requires_ns{$req})) {
+	    push @requires,"require(\"$req\",\"$requires_ns{$req}\");";
+	} else {
+	    push @requires,"require(\"$req\");";
+	}
+    }
+}
+
+if (@requires) {
+    write_file($outfile,{append=>1}, "%\n% Including external modules\n%");
+    my @reqcode;
+    foreach my $re ( @requires ) {
+	push @reqcode, "\ntry {${re}} catch AnyError: {;};";
+    }
+    push @reqcode,"\n\n";
+    write_file($outfile,{append=>1}, @reqcode);
+}
+
+my @imports=map { " import(\"$_\"); "} sort {lc($a) cmp lc($b)} keys(%imports);
+if (@imports) {
+    write_file($outfile,{append=>1}, "%\n% Loading external libraries\n%");
+    my @loadcode;
+    foreach my $re ( @imports ) {
+	push @loadcode, "\ntry {${re}} catch AnyError: {;};";
+    }
+    push @loadcode,"\n\n";
+    write_file($outfile,{append=>1}, @loadcode);
+}
+
+
+#
+# external modules: we check for the existence of this function name
+# if an external module is required by a submodule that's included in
+# the scripts
+#
+
+my %modulecheck;
+$modulecheck{fitswcs}="fitwcs_get_img_wcs";
+$modulecheck{fork_socket}="fork_slave";
+$modulecheck{gcontour}="gcontour_compute";
+$modulecheck{gsl}="gsl->convolve"; # only available from gsl 0.8 onwards! [which we need]
+$modulecheck{isis}="isis_exit";
+$modulecheck{pcre}="pcre_compile";
+$modulecheck{png}="png_add_colormap";
+$modulecheck{pvm_ms}="pvm_mytid";
+$modulecheck{rand}="rand_flat";
+$modulecheck{slmpi}="rcl_mpi_init";
+$modulecheck{socket}="socket";
+$modulecheck{tcp}="tcp_server";
+$modulecheck{vector}="vector";
+$modulecheck{vector}="vector";
+$modulecheck{wcsfuns}="wcsfuns_project";
+$modulecheck{xfig}="xfig_plot_new";
+$modulecheck{xspec}="load_xspec_local_models";
+$modulecheck{curl}="curl_new";
+$modulecheck{expat}="xml_new";
+
+#
+# certain functions might only be present in some versions
+# of slang -> escape them
+#
+my %isisfunc;
+$isisfunc{mean}=1;
+$isisfunc{sincos}=1;
+$isisfunc{wherefirstmax}=1;
+$isisfunc{wherefirstmin}=1;
+$isisfunc{wherefirst}=1;
+$isisfunc{wherelast}=1;
+$isisfunc{wherelast_le}=1;
+$isisfunc{help}=1;
+$isisfunc{beta_inc}=1;
+$isisfunc{lngamma}=1;
+$isisfunc{log1p}=1;
+
+foreach my $ff (sort keys(%isisfunc)) {
+    if (defined($functions{$ff})) {
+	write_file($outfile,{append=>1},"#ifnexists $ff\ndefine $ff();\n#endif\n");
+	delete($functions{$ff});
+    }
+    if (defined($publfunctions{$ff})) {
+	write_file($outfile,{append=>1},"#ifnexists $ff\npublic define $ff();\n#endif\n");
+	delete($publfunctions{$ff});
+    }
+    if (defined($privfunctions{$ff})) {
+	write_file($outfile,{append=>1},"#ifnexists $ff\npublic define $ff();\n#endif\n");
+	delete($privfunctions{$ff});
+    }
+}
+
+
+# fully ignore certain functions - these will NOT be
+# forward defined
+# (only add things here if you really know what you're doing)
+my %ignorefunc;
+$ignorefunc{isis_fit_improved_hook}=1;
+
+foreach my $ff (sort keys(%ignorefunc)) {
+    if (defined($functions{$ff})) {
+	delete($functions{$ff});
+    }
+    if (defined($publfunctions{$ff})) {
+	delete($publfunctions{$ff});
+    }
+    if (defined($privfunctions{$ff})) {
+	delete($privfunctions{$ff});
+    }
+}
+
+
+
+
+# block of forward function definitions
+my @forwards=map { "define $_();\n" }  sort {lc($a) cmp lc($b)} keys(%functions);
+write_file($outfile,{append=>1}, "%\n% Functions defined in this module\n% (a total of $#forwards functions)\n%\n");
+write_file($outfile, {append=>1}, @forwards);
+
+@forwards=map { "public define $_();\n" }  sort {lc($a) cmp lc($b)} keys(%publfunctions);
+write_file($outfile,{append=>1}, "%\n% Functions explicitly defined as public\n% (a total of $#forwards functions)\n%\n");
+write_file($outfile, {append=>1}, @forwards);
+
+@forwards=map { "private define $_();\n" }  sort {lc($a) cmp lc($b)} keys(%privfunctions);
+write_file($outfile,{append=>1}, "%\n% Functions explicitly defined as private\n% (a total of $#forwards functions)\n%\n");
+write_file($outfile, {append=>1}, @forwards);
+
+# print out the code
+foreach my $fi (sort keys(%modules)) {
+    write_file($outfile,{append=>1}, "\n%\n% Code from $modules{$fi}->{path}\n%\n");
+
+    # check whether the code depends on anything that is
+    # externally required:
+
+    if ($checkrequires) {
+	foreach my $extreq (sort @{$modules{$fi}->{imports}} ) {
+	    if (defined($modulecheck{$extreq})) {
+		write_file($outfile,{append=>1}, ["\n% only activate if  $extreq could be imported\n",
+						  "#ifeval __get_reference(\"$modulecheck{$extreq}\")!=NULL\n"]
+		    );
+	    }
+	}
+
+	foreach my $extreq (sort  @{$modules{$fi}->{requires}} ) {
+	    if (defined($modulecheck{$extreq})) {
+		write_file($outfile,{append=>1}, ["\n% only activate if module $extreq could be loaded\n",
+						  "#ifeval __get_reference(\"$modulecheck{$extreq}\")!=NULL\n"]
+		    );
+	    }
+	}
+    }
+
+    write_file($outfile,{append=>1}, @{$modules{$fi}->{code}});
+
+
+    # close external requires and imports
+    if ($checkrequires) {
+	foreach my $extreq (sort  @{$modules{$fi}->{requires}} ) {
+	    if (defined($modulecheck{$extreq})) {
+		write_file($outfile,{append=>1}, ["\n#endif\n"]);
+	    }
+	}
+
+	foreach my $extreq (sort  @{$modules{$fi}->{imports}} ) {
+	    if (defined($modulecheck{$extreq})) {
+		write_file($outfile,{append=>1}, ["\n#endif\n"]);
+	    }
+	}
+    }
+}
+
+if (@last_scripts) {
+    foreach my $fi ( @last_scripts ) {
+	my @lili=read_file($fi);
+	write_file($outfile,{append=>1},@lili);
+    }
+}

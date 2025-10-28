@@ -1,0 +1,13 @@
+We investigated the X-ray emission characteristics of the active galactic nucleus (AGN) in the Seyfert galaxy NGC 2992, focusing on emission lines, variability, and obscuration. 
+Four datasets—two each from the NuSTAR and XMM-Newton space telescopes—were utilized. Analysis of XMM-Newton RGS1 data in the 0.5–0.7 keV range revealed a soft X-ray excess. 
+NuSTAR color-to-color diagrams in the 3–79 keV range allowed characterization of temporal variability, particularly of the Fe Ka emission line, providing insight into its 
+location and strength relative to the black hole.
+
+We confirmed the presence of the Fe Ka line at ~6.4 keV, likely originating from the torus, but were unable to validate three distinct iron emission lines reported by 
+Marinucci et al. (The lively accretion disc in NGC 2992 – I. Transient iron K emission lines in the high-flux state) without introducing statistical bias. 
+An O VIII emission at ~0.65 keV was observed, potentially tracing hotter AGN structures relative to the torus, such as the corona or outflows. Partial obscuration by 
+surrounding gas was modeled, showing significant improvements in fit statistics. Data suggest a possible Fe XXVI emission at ~6.97 keV, warranting further investigation.
+
+These findings support a model of NGC 2992 as a supermassive black hole with a jet along its rotational axis, a partially obscured accretion disk, and a distant torus. 
+Future work includes refining the soft X-ray excess characterization, constraining obscuration fractions, and exploring relativistic effects in iron emission lines, 
+contributing to a deeper understanding of AGN structure and the Seyfert unification model.

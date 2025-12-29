@@ -1,0 +1,15 @@
+This document details precisely how each dataset was obtained from the respective space telescopes and their databases.
+
+--NuSTAR--
+NuSTAR datasets were the first I used in my research. The following datasets were used, identified by their respective observation IDs (ObIDs), with information on how they can be obtained information
+about how/when I used them:
+
+NuSTAR ObID 90501623002:
+    - First Use: fall_2025
+    - Purpose: Observe High X-Ray emissions of the NGC 2992 AGN. Cross comparison with "The lively accretion disc in NGC 2992-I. Transient iron K emission lines in the high-flux state", 
+        Marinucci et al., 2020, MNRAS 496, 3412-3423, https://academic.oup.com/mnras/article/496/3/3412/5857190.
+    
+
+NuSTAR ObID 60160371002:
+    - First Use: fall_2025
+    - Purpose: Cross compare with NuSTAR ObID 60160371002, and rule out statistical uncertainty in observations.

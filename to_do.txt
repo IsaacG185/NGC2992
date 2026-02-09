@@ -1,0 +1,161 @@
+Seth - 271
+larner@wustl.edu
+
+NuSTAR (FPMA and FPMB): 3-79 keV
+XMM-Newton (pn): 0.15 - 12 keV
+XMM-Newton (RGS1/R1 and RGS2/R2): 0.35 - 2.5 keV
+
+To export a data file:
+id = open_print("name_to_change_later.ps/vcps"); nice_width; keynote_size; charsize(1);
+% Plot stuff goes here
+close_print(id, "evince");
+% Prints in current directory
+
+
+-MODELING (NUSTAR)-
+conf_loop(,1,0.1;save,prefix="namehere.",nice=19);
+save_par("something_last_model.par");
+
+bknpower, tbabs, gaussian, highecut
+bknpower, tbabs, gaussian, highecut, laor
+powerlaw, tbabs, gaussian, highecut
+powerlaw, tbabs, gaussian, highecut, laor
+
+NOTE: for obB, I had to change powerlaw norm to 1e-2 value (1e-3 in obA). When laor isn't present, bknpower norm value is adjusted to 1e-2 and powerlaw is not adjusted.
+
+pexmon, tbabs, laor
+pexmon redshift 0.00771; freeze
+pexmon tie abundances; start one of them with 1.
+pexmon incl angle free, start at 30
+pexmon scale/reflection fraction >1, free
+don't tie laor to anything lineE, 6 to 7 keV range, 6.4
+
+Freeze incl at ˜45, decerase min for cutoffpl norm, make rel_refl -10 to 0, laor norm to 0
+
+obA - Incl pegs at 80, lineE pegs at 7
+obB - No issues
+
+
+cutoffpl+pexmon; pexmon norm <1, both phoIndex and cutoff independent, cutoffpl norm >1, incl frozen to 60, abund frozen at 1; 
+cutoffpl, pexmon, tbabs, laor
+
+second ob - gabs(everyting); sigma (set to 0.01, freeze it there), others keep open
+
+-MODELING (NUSTAR)-
+
+% 0840920301
+
+.5 to 10 keV region is the focus
+
+lightcurve = entire emission variability; colors-to-colors (split counts of spectra into three to find three increments for lc
+spectra = energy lines
+
+PI = E * 1000 (exposure should be 90 ks for each one)
+
+
+figure32,figure33,figure34 - Color vs. Color
+figure35,figure36,figure37 - Intensity vs. Color
+
+figure38,figure39,figure40 - Region1, Region2, both, ObID301 ONLY
+
+extrema_spectra - Spectra generated on these regions, ObID 301 ONLY
+
+without bbody, 301: 573.9562
+with bbody, 301: 311.9678
+bbody is worth it statistically; serves as a temporary placeholder for a more detailed model.
+
+XMM_A_test_no_laor, without laor, 301: 311.7069
+XMM_A_test_laor, with laor, 301: 291.8192
+laor is not worth it statistically with the given parameters
+
+XMM_B_test_no_laor, without laor, 201: 359.8986
+XMM_B_test_laor, with laor, 201: 330.0492
+laor is not worth it statistically with the given parameters
+
+
+See what laor parameters I can freeze, start with freezing index at 3
+If temp of bbody >100 eV, freeze bbody temp (Rayleigh Jeans and Wein).
+Then, Test TBpcf.pcf frozen values from .85 to 0 (Try to remove/change TBpcf)
+
+
+Comparing to XMM_A_test_laor and XMM_B_test_laor:
+
+XMM_A_test_laor, with laor, 301: 291.8192
+XMM_B_test_laor, with laor, 201: 330.0492
+
+XMM_A_adj1 (laor(1).Index now frozen to 3): 293.5623
+XMM_B_adj1 (laor(1).Index now frozen to 3): 339.3110
+
+Although the difference between the kai squared values of XMM_B_test_laor and XMM_B_adj1 is significant, it is not physically possible for the index to change enough between the two observations (two days between the observations) such that the index changes from a statistically insignificant to statistically significant value. We will freeze it for now and will come back to it should it be deemed necessary.
+
+XMM_A_adj1 (laor(1).Index now frozen to 3): 293.5623
+XMM_B_adj1 (laor(1).Index now frozen to 3): 339.3110
+
+Temp is greater than 100 eV, so no need to keep bbody(1).kT open. We will freeze this and test TBpcf(1).pcf values
+
+XMM_A_adj2 (bbody(1).kT now frozen to 1.1): 293.5182
+XMM_B_adj2 (bbody(1).kT now frozen to 1.1): 340.7198
+
+
+XMM_A_adj3: Runs a function that tests XMM_A_adj2 with the pcf frozen at 0.85 and decreasing by 0.5 every time.
+XMM_B_adj3: Runs a function that tests XMM_B_adj2 with the pcf frozen at 0.85 and decreasing by 0.5 every time.
+
+XMM_A_adj2 (bbody(1).kT now frozen to 1.1): 293.5182
+XMM_B_adj2 (bbody(1).kT now frozen to 1.1): 340.7198
+
+
+301
+0.95: 1931.037
+0.90: 976.7878
+0.85: 297.8046
+0.80: 325.5825
+0.75: 381.3488
+0.70: 457.3709
+0.65: 552.8529
+0.60: 666.4172
+0.55: 795.456
+0.50: 936.2874
+...
+0.05: 2517.202
+
+201
+0.95: 1531.765
+0.90: 457.0910
+0.85: 369.5147 % Most Ideal Based off Increments
+0.80: 432.5217
+0.75: 514.0694
+0.70: 611.2934
+0.65: 722.7660
+0.60: 847.4188
+0.55: 984.0890
+0.50: 1130.871
+...
+0.20: 2088.2360
+
+XMM_A_adj3 (TBpcf(2).pcf now frozen to 0.85): smallest change from above
+XMM_B_adj3 (TBpcf(2).pcf now frozen to 0.85): smallest change from above
+The in-between parameters from the optimization are located in the 
+"XMM Modeling" folders of their respective observation folders in
+"Extracted Data".
+
+Adjust bbody to soft X-rays, make sense of all models, then XMM adj 1-3 to maximize
+
+[] = combined data, {} = individual data
+plot_comps({[1]}, &plot_unfold; ccol=9,power=3);
+
+
+
+
+value/lineE = % of speed of light; figure out derivation; upper limit of how far this oxygen line could be from the center of the BH; look at this more
+try apple pages; try pdfs
+figure out how to draw diagrams
+vFV (EFE) = power=3; avoid use when possible; apply ccd models to RGS data, bin RGS data (uniformily; one min_chan value and rebin_data), as needed; absorption model (zTBabs * powerlaw) should see dips in 0.7 for Fe and 0.9 Ne) in RGS data, won't really appear in CCD (pn data) as it is not as clear.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Abstract Brainstorming:
+
+Black hole, accretion, torus, obscuration between the accretion disk and torus, hot atmosphere within accretion disc, corona closest to black hole and jet coming out corona. Jet generates powerlaw, and that is affected by TBpcf (maybe is there; there is coverage, but the fraction at which the coverage exists is unclear; ~90-80% coverage; there maybe could be something in the lower energy from the coverage in the model). Scattering off torus is pexmon. Powerlaw not characterized precisely, pexmon we're completely sure of. Pexmon * relativity (not sure if its there): cold accretion disc and cold torus. In the hot atmosphere, the oxygen VIII line (for sure is there) and Iron 26 line (maybe there, very difficult to see) originates.
+
+Silicon Ka, don't know if it actually exists (look at RGS data; it exists in the CCD data of probably NuSTAR).
+
+Pexmon is far away from BH center, can't change in time scales of observation,, shouldn't vary as much as the other stuff. Base all analyses on the static qualities of pexmon.
+

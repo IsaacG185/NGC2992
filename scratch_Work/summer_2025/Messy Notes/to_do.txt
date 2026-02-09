@@ -158,4 +158,3 @@ Black hole, accretion, torus, obscuration between the accretion disk and torus, 
 Silicon Ka, don't know if it actually exists (look at RGS data; it exists in the CCD data of probably NuSTAR).
 
 Pexmon is far away from BH center, can't change in time scales of observation,, shouldn't vary as much as the other stuff. Base all analyses on the static qualities of pexmon.
-

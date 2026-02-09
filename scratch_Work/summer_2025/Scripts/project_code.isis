@@ -787,6 +787,15 @@ define figure31() {
 	plotxy(sum_rates.rate,sum_rates.err,sum_rates.err,cxz.cons,cxz.err,cxz.err; xrange={0, 6}, yrange={-0.5,0.5}, decol=4, dcol=4);
 	plotxy(gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err,gb_cxz.cons, gb_cxz.err,gb_cxz.err; oplt=1, decol=8,dcol=8);
 }
+
+define figure32() {
+	s_c;
+	connect_points(0);
+	xlabel("Time (s)"); ylabel("Rates [xyz] (counts/s)"); title("Rates/Intensity of three energy bands (counts/s) vs. time (s) from two observations");
+	plotxy(cxy.time,,,sum_rates.rate,sum_rates.err,sum_rates.err;yrange={1.5,5},decol=4,dcol=4);
+	plotxy(gb_cxy.time,,,gb_sum_rates.rate,gb_sum_rates.err,gb_sum_rates.err; oplt=1,xrange={NULL,NULL}, yrange={1.5,5},decol=8,dcol=8);
+
+}
 define modeling_setup() {
 	delete_data(all_data);
 	() = xspec_abund("wilm"); % Necessary to make sure the elemental abundances of the interstellar medium are what we want
@@ -819,7 +828,7 @@ define example7() {
 	% fit_fun("constant(Isis_Active_Dataset)*(modelgoeshere)"); this is template for models
 	% In our case,
 		
-	fit_fun("constant(Isis_Active_Dataset)*law(1)*tbabs(1)");
+	fit_fun("constant(Isis_Active_Dataset)*powerlaw(1)*tbabs(1)");
 	list_free;
 		
 	% Freeze 1,2,3, and 4.
@@ -842,7 +851,7 @@ define example7() {
 	% Then,
 	title("Model of 90501623002 without residual compensation");
 	xlog; ylog;
-	plot_unfold({[1,2]}; res=2); % The {[1,2]} adds up both focal plane modules into one composite data set.
+	plot_unfold({[1,2]}; dcol=4,res=2); % The {[1,2]} adds up both focal plane modules into one composite data set.
 }
 define example8() { 		
 	exclude(all_data); include([3,4]);
@@ -866,7 +875,7 @@ define example8() {
 	% Then,
 	title("Model of 60160371002 without residual compensation");
 	xlog; ylog;
-	plot_unfold({[3,4]}; res=2);
+	plot_unfold({[3,4]}; dcol=8,res=2);
 }
 define example9() {
 	% We must fit the residuals found in the 0 to 10 keV range; this looks like an emission line, so we use gaussian(1) on the power law. 
@@ -888,7 +897,7 @@ define example9() {
 	fit_counts;
 	title("Model of 90501523002 with residual compensation");
 	xlog; ylog;
-	plot_unfold({[1,2]};res=2);
+	plot_unfold({[1,2]}; dcol=4,res=2);
 }
 define example10() {
 	
@@ -909,9 +918,12 @@ define example10() {
 	fit_counts;
 	title("Model of 60160371002 with residual compensation (gaussian)");
 	xlog; ylog;
-	plot_unfold({[3,4]};res=2);
-}	
-define obA_modelI() {
+	plot_unfold({[3,4]}; dcol=8,res=2);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Modeling	
+define obA_modelI() { % [185] BOOKMARK
 
 	% fit_fun("constant(Isis_Active_Dataset)*((bknpower(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
 	fit_fun("constant(Isis_Active_Dataset)*((powerlaw(1)*highecut(1))+gaussian(1)+laor(1))*tbabs(1)");
@@ -945,7 +957,7 @@ define obA_modelI() {
 	fit_counts;
 	title("Model of 90501523002 (bknpower, tbabs, gaussian, highecut, laor)");
 	xlog; ylog;
-	plot_unfold({[1,2]};res=2,power=3);
+	plot_unfold({[1,2]};dcol=4,res=2,power=3);
 }
 define obB_modelI() { 
 
@@ -1319,7 +1331,7 @@ define obA_cutoffpl_pexmon_tbabs_laor() {
 	fit_counts;
 	title("Model of 90501523002 (pexmon, cutoffpl, tbabs, laor)");
 	xlog; ylog;
-	plot_unfold({[1,2]};res=2,power=3);
+	plot_unfold({[1,2]};res=2,power=3,dcol=4);
 	
 }
 define obB_gabs_cutoffpl_pexmon_tbabs_laor() {
@@ -1357,9 +1369,9 @@ define obB_gabs_cutoffpl_pexmon_tbabs_laor() {
 	
 	renorm_counts;
 	fit_counts;
-	title("Model of 60160371002 (gabs,pexmon, cutoffpl, tbabs, laor)");
+	title("Model of 60160371002 (gabs, pexmon, cutoffpl, tbabs, laor)");
 	xlog; ylog;
-	plot_unfold({[3,4]};res=2,power=3);
+	plot_unfold({[3,4]};res=2,power=3,dcol=8);
 	
 }
 modeling_setup;
@@ -1815,28 +1827,28 @@ isnan(B_cyz.rate) or isinf(B_cyz.rate) or isnan(B_cyz.err) or isinf(B_cyz.err) o
 	B_intensity.err = sqrt(gxb.err^2+gyb.err^2+gzb.err^2);
 	
 }
-define figure32() {
+define figure33() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("cxy"); ylabel("cyz"); title("XMM Colors xy vs yz from both observations");
 	plotxy(gA_cxy.rate,gA_cxy.err,gA_cxy.err,gA_cyz.rate,gA_cyz.err,gA_cyz.err; dcol=4,xrange={-0.2,0.2},yrange={-0.4,0.2});
 	plotxy(gB_cxy.rate,gB_cxy.err,gB_cxy.err,gB_cyz.rate,gB_cyz.err,gB_cyz.err; dcol=8,oplt=1);
 }
-define figure33() {
+define figure34() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("cxy"); ylabel("cxz"); title("XMM Colors xy vs xz from both observations");
 	plotxy(gA_cxy.rate,gA_cxy.err,gA_cxy.err,gA_cxz.rate,gA_cxz.err,gA_cxz.err; dcol=4,xrange={-0.2,0.2},yrange={-0.5,0.2});
 	plotxy(gB_cxy.rate,gB_cxy.err,gB_cxy.err,gB_cxz.rate,gB_cxz.err,gB_cxz.err; dcol=8,oplt=1);
 }
-define figure34() {
+define figure35() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("cyz"); ylabel("cxz"); title("XMM Colors yz vs xz from both observations");
 	plotxy(gA_cyz.rate,gA_cyz.err,gA_cyz.err,gA_cxz.rate,gA_cxz.err,gA_cxz.err; dcol=4,xrange={-0.4,0.2},yrange={-0.5,0.2});
 	plotxy(gB_cyz.rate,gB_cyz.err,gB_cyz.err,gB_cxz.rate,gB_cxz.err,gB_cxz.err; dcol=8,oplt=1);
 }
-define figure35() {
+define figure36() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("Intensity of Rates (xyz)"); ylabel("cxy"); title("Intensity (xyz) vs. Colors of xy for both XMM observations");
@@ -1844,7 +1856,7 @@ define figure35() {
 	plotxy(B_intensity.rate,B_intensity.err,B_intensity.err,gB_cxy.rate,gB_cxy.err,gB_cxy.err; dcol=8,oplt=1);
 	
 }
-define figure36() {
+define figure37() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("Intensity of Rates (xyz)"); ylabel("cyz"); title("Intensity (xyz) vs. Colors of yz for both XMM observations");
@@ -1852,7 +1864,7 @@ define figure36() {
 	plotxy(B_intensity.rate,B_intensity.err,B_intensity.err,gB_cyz.rate,gB_cyz.err,gB_cyz.err; dcol=8,oplt=1);
 	
 }
-define figure37() {
+define figure38() {
 	XMM_s_c;
 	connect_points(0);
 	xlabel("Intensity of Rates (xyz)"); ylabel("cxz"); title("Intensity (xyz) vs. Colors of xz for both XMM observations");
@@ -1898,7 +1910,7 @@ define extrema_finding() {
 	r_two.index_time = gA_cxy.time[r_two.index];
 	r_two_sorted_times = sort_array_ascending(r_two.index_time);
 }
-define figure38() {
+define figure39() {
 	XMM_s_c;
 	extrema_finding;
 	connect_points(0);
@@ -1908,7 +1920,7 @@ define figure38() {
 	vmessage(" call r_one_sorted_times and r_two_sorted_times for GTIs");
 	vmessage(" save time intervals for extrema in current directory using save_extrema_finding");
 }
-define figure39() {
+define figure40() {
 	XMM_s_c;
 	extrema_finding;
 	connect_points(0);
@@ -1918,7 +1930,7 @@ define figure39() {
 	vmessage(" call r_one_sorted_times and r_two_sorted_times for GTIs");
 	vmessage(" save time intervals for extrema in current directory using save_extrema_finding");
 }
-define figure40() {
+define figure41() {
 	XMM_s_c;
 	extrema_finding;
 	connect_points(0);
@@ -2205,7 +2217,7 @@ define XMM_A_test_no_laor() {
 	fit_counts;
 	(,) = conf_loop(,1,0.1);
 	title("Model of 0840920301, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody");
-	xlog; ylog;
+	xlog; ylog; pg_color;
 	plot_unfold({[1]};res=2,power=3);
 }
 define XMM_A_test_laor() {
@@ -2250,8 +2262,8 @@ define XMM_A_test_laor() {
 	fit_counts;
 	(,) = conf_loop(,1,0.1);
 	title("Model of 0840920301, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody, laor");
-	xlog; ylog;
-	plot_unfold({[1]};res=2,power=3);
+	xlog; ylog; pg_color;
+	plot_unfold({[1]};res=2,power=3,dcol=12);
 }
 define XMM_B_test_no_laor() {
 	XMM_load;
@@ -2288,8 +2300,8 @@ define XMM_B_test_no_laor() {
 	fit_counts;
 	(,) = conf_loop(,1,0.1);
 	title("Model of 0840920201, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody");
-	xlog; ylog;
-	plot_unfold({[2]};res=2,power=3);
+	xlog; ylog; pg_color;
+	plot_unfold({[2]};res=2,power=3,dcol=17);
 }
 define XMM_B_test_laor() {
 	XMM_load;
@@ -2333,8 +2345,8 @@ define XMM_B_test_laor() {
 	fit_counts;
 	(,) = conf_loop(,1,0.1);
 	title("Model of 0840920201, TBpcf, tbabs_src, tbabs_galaxy, powerlaw, pexmon, gaussian, bbody, laor");
-	xlog; ylog;
-	plot_unfold({[2]};res=2,power=3);
+	xlog; ylog; pg_color;
+	plot_unfold({[2]};res=2,power=3,dcol=17);
 }
 
 
@@ -2981,6 +2993,7 @@ define legend(){
 	vmessage("XMM-Newton ObID 0840920201 = Green (Index 17)");
 	vmessage("Background Data (for all observations) = Black (Index 16)");
 	vmessage("Models (for all observations) = Red (Index 2)");
+	vmessage("any errors with plotting colors, run pg_color");
 }
 
 vmessage(" project_code.isis loaded successfully");

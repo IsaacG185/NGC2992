@@ -20,3 +20,4 @@ and cleaning the data as described by all of these mediums, is located in data_E
 This section details all scientific findings of mine related to NGC 2992. These findings can be replicated utilizing the process detailed in data_Extraction_Calibration_And_Cleaning first, and
 then the methods detailed below.
 
+In the scientific_Analysis repository, we can find [instructions WIP].

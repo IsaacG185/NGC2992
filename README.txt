@@ -21,3 +21,5 @@ This section details all scientific findings of mine related to NGC 2992. These 
 then the methods detailed below.
 
 In the scientific_Analysis repository, we can find [instructions WIP].
+
+This needs to be updated apparently.

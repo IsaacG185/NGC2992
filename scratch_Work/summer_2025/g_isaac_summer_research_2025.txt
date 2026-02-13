@@ -499,3 +499,4 @@ More checks
 
 rgsrmfgen spectrumset=P0840920201R2S009SRSPEC1001.FIT rmfset=r2_o1_rmf.fits \
 emin=0.4 emax=2.5 rows=4000	
+% this is a test.

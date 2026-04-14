@@ -3,4 +3,4 @@ export CALDB=/man1/CALDB # ADJUST
 echo " CALDB is set to: $CALDB"
 export CALDBINIT=/man1/CALDB/software/tools/caldbinit.sh # ADJUST
 echo " CALDBINIT is set to: $CALDBINIT"
-isis -g /ugrad/gisaac/Downloads/Repositories/NGC2992/scratch_Work/summer_2025/Scripts/project_code.isis # ADJUST
+isis -g /ugrad/gisaac/Downloads/Repositories/NGC2992/scratch_Work/summer_2025/Scripts/ # ADJUST

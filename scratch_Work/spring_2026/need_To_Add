@@ -1,0 +1,40 @@
+define iron_Broad_Emission() {
+	XMM_load;
+	group([1];min_chan=[2:16],bounds=[0.2,0.45,0.8,1.25,1.8,2.45,
+   	3.2,4.05,5.0,6.05,7.2,8.45,9.8,11.25,12.8],unit="kev",min_sn=50);
+	notice_values([1],0.4,10.;unit="kev");
+
+	fit_fun("constant(Isis_Active_Dataset)*tbabs(2)*((powerlaw(1)+bbody(1)+pexmon(1)))");
+	exclude(all_data); include([1]);
+	
+	set_par("constant(1).factor",1,1);
+	
+	% Milky Way obstruction
+	set_par("tbabs(2).nH",0.053,1); % From HEASARC website
+	
+	% General emissions from NGC 2992
+	set_par("powerlaw(1).norm",1e-1,0,0,1);
+	set_par("powerlaw(1).PhoIndex",1.8,0,1,3); % Photon Index; photon energies
+	
+	% Soft X-ray component (present around 0.4 to 0.9 keV); meant to be placeholder for more
+	% detailed model.
+	set_par("bbody(1).norm",1e-1,0,0,1);
+	set_par("bbody(1).kT",0.5,0,0.4,0.9);
+	
+	% Iron Ka, Kb, Compton shoulder for Ka, and Nickel Ka lines
+	set_par("pexmon(1).norm",1e-1,0,0,1);
+	set_par("pexmon(1).rel_refl",-1,1); % Frozen to include reflecting portion of emissions
+	set_par("pexmon(1).Incl",45,1); % 5 Actual inclination unknown; frozen at 45 for now
+	set_par("pexmon(1).Fe_abund",1,1); % Iron abundance
+	set_par("pexmon(1).redshift",0.0077,1); % Known redshift of NGC 2992
+	set_par("pexmon(1).foldE",1000,1); % Told to freeze this here
+	set_par("pexmon(1).abund",1,1); % Metal abundance
+	set_par("pexmon(1).PhoIndex",1.5,0,1.1,2.5);
+	
+	renorm_counts;
+	fit_counts;
+	(,) = conf_loop(,1,0.1);
+	title("Model 0840920301");
+	xlog; ylog;
+	plot_unfold({[1]};res=2,power=3);
+}

@@ -1,0 +1,21 @@
+XMM-Newton, RGS, Fe_XVIII() : what is this? is this real? Continuum in drop
+just after it, throughout. [M] Detector and source, look for filter type (thick, medium, thin),
+in header. Try with and without background bkg={0,1,-1} # 1 = src+bkg, -1 = bkg.
+See if background is getting in the way.
+
+Chandra, ACIS (HETG), id 4304, srcid 2172 : look at lower resolution data;
+[M] very faint observation, might be better at the lower end (0.5 - 8 keV). 
+Look at this data, compare to other obseravations (somehow, maybe some visualization
+in astropy ?).
+
+Chandra observations on Silicon Ka line, ~1.74 keV (?): [M] Do this when looking at
+task above.
+
+Organization: separate summer_2025 and fall_2025 files. Then, replicate
+following in spring_2026:
+
+- Spectra for XMM-Newton, both observations
+- Spectra for NuSTAR, both observations
+- Spectra for Chandra (?)
+
+Defining the strucutre; what next?
